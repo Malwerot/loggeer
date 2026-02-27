@@ -22,9 +22,10 @@ local function pressE()
         if torso then
             local prompt = torso:FindFirstChild("ProximityPrompt")
             if prompt then
-                -- remove limite de distância e linha de visão
-                prompt.MaxActivationDistance = 999999
+                -- força o prompt a ser acionável de qualquer distância
+                prompt.MaxActivationDistance = math.huge
                 prompt.RequiresLineOfSight = false
+                prompt.Enabled = true
                 fireproximityprompt(prompt)
             end
         end
@@ -33,7 +34,7 @@ local function pressE()
     currentIndex = currentIndex % #homelessList + 1
 end
 
--- Loop de interação (sem cooldown)
+-- Loop de interação contínua
 local function startAutoInteract()
     if interactConnection then interactConnection:Disconnect() end
     currentIndex = 1
