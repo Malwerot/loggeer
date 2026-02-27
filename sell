@@ -37,14 +37,16 @@ local function pressE()
         if torso then
             local prompt = torso:FindFirstChild("ProximityPrompt")
             if prompt then
-                -- força interação sem limite de distância
                 prompt.MaxActivationDistance = math.huge
                 prompt.RequiresLineOfSight = false
                 prompt.Enabled = true
 
-                -- cria hitbox visual se ainda não existir
+                -- cria hitbox fixa de 7 metros (7 studs de raio)
                 if not torso:FindFirstChild("Hitbox") then
-                    createHitbox(torso, 10) -- raio padrão 10 (ajustável)
+                    createHitbox(torso, 7)
+                else
+                    torso.Hitbox.Size = Vector3.new(14, 14, 14)
+                    torso.Hitbox.CFrame = torso.CFrame
                 end
 
                 fireproximityprompt(prompt)
