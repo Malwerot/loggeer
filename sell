@@ -18,10 +18,11 @@ local function createHitbox(torso, radius)
     local hitbox = Instance.new("Part")
     hitbox.Shape = Enum.PartType.Ball
     hitbox.Size = Vector3.new(radius*2, radius*2, radius*2)
-    hitbox.Transparency = 0.7
-    hitbox.Color = Color3.fromRGB(0, 255, 0)
+    hitbox.Transparency = 0.8
+    hitbox.Color = Color3.fromRGB(0, 255, 0) -- verde
     hitbox.Anchored = true
     hitbox.CanCollide = false
+    hitbox.Name = "Hitbox"
     hitbox.Parent = torso
     hitbox.CFrame = torso.CFrame
     return hitbox
@@ -41,11 +42,9 @@ local function pressE()
                 prompt.RequiresLineOfSight = false
                 prompt.Enabled = true
 
-                -- cria hitbox visual (raio padrão do prompt ou 10 se não definido)
-                local radius = prompt.MaxActivationDistance > 0 and prompt.MaxActivationDistance or 10
+                -- cria hitbox visual se ainda não existir
                 if not torso:FindFirstChild("Hitbox") then
-                    local hb = createHitbox(torso, radius)
-                    hb.Name = "Hitbox"
+                    createHitbox(torso, 10) -- raio padrão 10 (ajustável)
                 end
 
                 fireproximityprompt(prompt)
