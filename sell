@@ -12,8 +12,6 @@ local homelessList = {
     "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen","Twenty"
 }
 local currentIndex = 1
-local cooldownTimer = 0
-local currentCooldown = math.random(1,2)
 
 -- Função para interagir com o HomelessPeople atual
 local function pressE()
@@ -24,37 +22,29 @@ local function pressE()
         if torso then
             local prompt = torso:FindFirstChild("ProximityPrompt")
             if prompt then
-                -- remove limite de distância
+                -- remove limite de distância e linha de visão
                 prompt.MaxActivationDistance = 999999
+                prompt.RequiresLineOfSight = false
                 fireproximityprompt(prompt)
             end
         end
     end
     -- avança para o próximo
     currentIndex = currentIndex % #homelessList + 1
-    -- define novo cooldown aleatório
-    currentCooldown = math.random(1,2)
 end
 
--- Loop de interação com cooldown aleatório
+-- Loop de interação (sem cooldown)
 local function startAutoInteract()
     if interactConnection then interactConnection:Disconnect() end
     currentIndex = 1
-    cooldownTimer = 0
-    currentCooldown = math.random(1,2)
 
-    interactConnection = RunService.Heartbeat:Connect(function(dt)
+    interactConnection = RunService.Heartbeat:Connect(function()
         if not autoInteractEnabled then
             interactConnection:Disconnect()
             interactConnection = nil
             return
         end
-
-        cooldownTimer = cooldownTimer + dt
-        if cooldownTimer >= currentCooldown then
-            pressE()
-            cooldownTimer = 0
-        end
+        pressE()
     end)
 end
 
