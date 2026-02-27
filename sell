@@ -1,0 +1,79 @@
+-- Serviços
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variáveis globais
+local autoInteractEnabled = false
+local interactConnection
+local homelessList = {
+    "One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten",
+    "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen","Twenty"
+}
+local currentIndex = 1
+
+-- Função para interagir com o HomelessPeople atual
+local function pressE()
+    local name = homelessList[currentIndex]
+    local person = Workspace.Folders.HomelessPeople:FindFirstChild(name)
+    if person then
+        local torso = person:FindFirstChild("UpperTorso")
+        if torso then
+            local prompt = torso:FindFirstChild("ProximityPrompt")
+            if prompt then
+                fireproximityprompt(prompt)
+                print(">>> Interagiu com HomelessPeople:", name)
+            else
+                print("Nenhum ProximityPrompt em:", name)
+            end
+        else
+            print("UpperTorso não encontrado em:", name)
+        end
+    else
+        print("HomelessPeople não encontrado:", name)
+    end
+
+    -- avança para o próximo
+    currentIndex = currentIndex % #homelessList + 1
+end
+
+-- Loop de interação
+local function startAutoInteract()
+    if interactConnection then interactConnection:Disconnect() end
+    currentIndex = 1
+    interactConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not autoInteractEnabled then
+            interactConnection:Disconnect()
+            interactConnection = nil
+            return
+        end
+        pressE()
+        wait(0.5) -- intervalo entre interações
+    end)
+end
+
+local function stopAutoInteract()
+    autoInteractEnabled = false
+    if interactConnection then
+        interactConnection:Disconnect()
+        interactConnection = nil
+    end
+end
+
+-- UI
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/UUII.lua"))()
+local Window = Library.CreateLib("HomelessPeople Interactor", "DarkTheme")
+
+local TabInteract = Window:NewTab("Interactor")
+local SectionInteract = TabInteract:NewSection("Controle")
+
+SectionInteract:NewToggle("ON/OFF", "Liga ou desliga interação automática", function(state)
+    autoInteractEnabled = state
+    if state then
+        startAutoInteract()
+        print("Interação automática iniciada!")
+    else
+        stopAutoInteract()
+        print("Interação automática parada!")
+    end
+end)
