@@ -22,17 +22,9 @@ local function pressE()
             local prompt = torso:FindFirstChild("ProximityPrompt")
             if prompt then
                 fireproximityprompt(prompt)
-                print(">>> Interagiu com HomelessPeople:", name)
-            else
-                print("Nenhum ProximityPrompt em:", name)
             end
-        else
-            print("UpperTorso não encontrado em:", name)
         end
-    else
-        print("HomelessPeople não encontrado:", name)
     end
-
     -- avança para o próximo
     currentIndex = currentIndex % #homelessList + 1
 end
@@ -71,9 +63,7 @@ SectionInteract:NewToggle("ON/OFF", "Liga ou desliga interação automática", f
     autoInteractEnabled = state
     if state then
         startAutoInteract()
-        print("Interação automática iniciada!")
     else
         stopAutoInteract()
-        print("Interação automática parada!")
     end
 end)
