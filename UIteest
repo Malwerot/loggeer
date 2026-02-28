@@ -1,0 +1,217 @@
+-- Serviços
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variáveis globais
+local farmConnection
+local currentIndex = 1
+local farmTimer = 0
+local equipPending = false
+local equipTimer = 0
+local EQUIP_DELAY = 0.3
+local marshmallowConnection
+
+-- Lista de itens com cooldowns específicos
+local farmItems = {
+    {name = "Water", cooldown = 0.5},
+    {name = "Sugar Block Bag", cooldown = 22},
+    {name = "Gelatin", cooldown = 2.8},
+    {name = "Empty Bag", cooldown = 47},
+}
+
+-- Funções utilitárias
+local function getInventory()
+    local allItems = {}
+    local backpack = LocalPlayer.Backpack
+    local character = LocalPlayer.Character
+    for _, item in ipairs(backpack:GetChildren()) do
+        if item:IsA("Tool") then table.insert(allItems, item.Name) end
+    end
+    if character then
+        for _, item in ipairs(character:GetChildren()) do
+            if item:IsA("Tool") then table.insert(allItems, item.Name) end
+        end
+    end
+    return allItems
+end
+
+local function countItems(itemName)
+    local count = 0
+    local backpack = LocalPlayer.Backpack
+    local character = LocalPlayer.Character
+    for _, item in ipairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and item.Name == itemName then
+            count = count + 1
+        end
+    end
+    if character then
+        for _, item in ipairs(character:GetChildren()) do
+            if item:IsA("Tool") and item.Name == itemName then
+                count = count + 1
+            end
+        end
+    end
+    return count
+end
+
+local function equipItem(itemName)
+    local character = LocalPlayer.Character
+    if not character then return false end
+    local tool = LocalPlayer.Backpack:FindFirstChild(itemName)
+    if tool then
+        local hum = character:FindFirstChild("Humanoid")
+        if hum then
+            hum:EquipTool(tool)
+            return true
+        end
+    end
+    return false
+end
+
+-- Função para interagir com Lamont Bell instantaneamente
+local function pressLamontBell()
+    pcall(function()
+        local npc = Workspace.Folders.NPCs:FindFirstChild("Lamont Bell")
+        if npc then
+            local upperTorso = npc:FindFirstChild("UpperTorso")
+            if upperTorso then
+                local pp = upperTorso:FindFirstChild("ProximityPrompt")
+                if pp then
+                    pp.HoldDuration = 0 -- interação instantânea
+                    fireproximityprompt(pp)
+                end
+            end
+        end
+    end)
+end
+
+-- Autofarm
+local function startAutoFarm()
+    if farmConnection then farmConnection:Disconnect() end
+    farmTimer = 0
+    equipPending = false
+    currentIndex = 1
+
+    farmConnection = RunService.Heartbeat:Connect(function(dt)
+        farmTimer = farmTimer + dt
+
+        if equipPending then
+            equipTimer = equipTimer + dt
+            if equipTimer >= EQUIP_DELAY then
+                -- aqui você pode chamar pressE() se quiser cozinhar
+                equipPending = false
+                equipTimer = 0
+                farmTimer = 0
+            end
+
+        elseif farmTimer >= farmItems[currentIndex].cooldown then
+            local success = equipItem(farmItems[currentIndex].name)
+            if success then
+                equipPending = true
+                equipTimer = 0
+                currentIndex = currentIndex % #farmItems + 1
+            else
+                currentIndex = currentIndex % #farmItems + 1
+            end
+            farmTimer = 0
+        end
+    end)
+end
+
+local function stopAutoFarm()
+    if farmConnection then
+        farmConnection:Disconnect()
+        farmConnection = nil
+    end
+    equipPending = false
+    equipTimer = 0
+    farmTimer = 0
+    currentIndex = 1
+end
+
+-- Função para contar marshmallows possíveis
+local function countMarshmallows()
+    local sugarCount = countItems("Sugar Block Bag")
+    local waterCount = countItems("Water")
+    local gelatinCount = countItems("Gelatin")
+    return math.min(sugarCount, waterCount, gelatinCount)
+end
+
+-- UI Rayfield
+getgenv().uilibray = getgenv().uilibray or loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Rayfield = getgenv().uilibray
+
+local Window = Rayfield:CreateWindow({
+    Name = "AXIOS Farm",
+    Icon = 107904589783906,
+    LoadingTitle = "AXIOS",
+    LoadingSubtitle = "Farm integrado",
+    Theme = "Default",
+    DisableRayfieldPrompts = true,
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "FarmConfigs",
+        FileName = "Configuration",
+    },
+})
+
+local FarmTab = Window:CreateTab("Farm", "package")
+
+-- Toggle para iniciar/parar AutoFarm
+FarmTab:CreateToggle({
+    Name = "Iniciar AutoFarm",
+    CurrentValue = false,
+    Flag = "AutoFarm",
+    Callback = function(state)
+        if state then
+            startAutoFarm()
+        else
+            stopAutoFarm()
+        end
+    end,
+})
+
+-- Botão de clique único para AutoSell Lamont Bell
+FarmTab:CreateButton({
+    Name = "AutoSell Lamont Bell",
+    Callback = function()
+        pressLamontBell()
+    end,
+})
+
+-- Botão para mostrar inventário
+FarmTab:CreateButton({
+    Name = "Mostrar Inventário",
+    Callback = function()
+        local inv = getInventory()
+        for i, itemName in ipairs(inv) do
+            print(itemName) -- ou mostrar na UI
+        end
+    end,
+})
+
+-- Label único para mostrar marshmallows
+local marshmallowLabel = FarmTab:CreateLabel("🍡 Você pode cozinhar até 0 marshmallows")
+
+-- Toggle para contador em tempo real
+FarmTab:CreateToggle({
+    Name = "Contador de Marshmallows",
+    CurrentValue = false,
+    Flag = "MarshCounter",
+    Callback = function(state)
+        if state then
+            if marshmallowConnection then marshmallowConnection:Disconnect() end
+            marshmallowConnection = RunService.Heartbeat:Connect(function()
+                local marshmallowCount = countMarshmallows()
+                marshmallowLabel:Set("🍡 Você pode cozinhar até " .. marshmallowCount .. " marshmallows")
+            end)
+        else
+            if marshmallowConnection then
+                marshmallowConnection:Disconnect()
+                marshmallowConnection = nil
+            end
+        end
+    end,
+})
