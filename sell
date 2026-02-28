@@ -41,11 +41,11 @@ local function pressE()
                 prompt.RequiresLineOfSight = false
                 prompt.Enabled = true
 
-                -- cria hitbox fixa de 40 metros (40 studs de raio)
+                -- cria hitbox fixa de 15 metros (15 studs de raio)
                 if not torso:FindFirstChild("Hitbox") then
-                    createHitbox(torso, 40)
+                    createHitbox(torso, 15)
                 else
-                    torso.Hitbox.Size = Vector3.new(80, 80, 80)
+                    torso.Hitbox.Size = Vector3.new(30, 30, 30)
                     torso.Hitbox.CFrame = torso.CFrame
                 end
 
