@@ -110,6 +110,8 @@ for _, setting in pairs(toggleSettings) do
     end
 end
 
+local AutoFarmScript = loadstring(game:HttpGet("https://seu-repo/AutoFarmScript.lua"))()
+
 local farmSettings = {
     { method = "Toggle", name = "Iniciar AutoFarm", flag = "AUTO_FARM", tab = Auto, value = le:Get("AUTO_FARM"), createDivider = true },
     { method = "Button", name = "AutoSell Lamont Bell", flag = "AUTO_SELL", tab = Auto },
