@@ -4,16 +4,12 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Variáveis globais
+-- Lógica de Farm (pode virar módulo separado depois)
 local farmConnection
 local marshmallowConnection
-local currentIndex = 1
-local farmTimer = 0
-local equipPending = false
-local equipTimer = 0
+local currentIndex, farmTimer, equipPending, equipTimer = 1, 0, false, 0
 local EQUIP_DELAY = 0.3
 
--- Lista de itens com cooldowns específicos
 local farmItems = {
     {name = "Water", cooldown = 0.5},
     {name = "Sugar Block Bag", cooldown = 22},
@@ -21,7 +17,6 @@ local farmItems = {
     {name = "Empty Bag", cooldown = 47},
 }
 
--- Funções utilitárias
 local function getTools()
     local tools = {}
     for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
@@ -47,11 +42,17 @@ end
 local function countItems(itemName)
     local count = 0
     for _, tool in ipairs(getTools()) do
-        if tool.Name == itemName then
-            count = count + 1
-        end
+        if tool.Name == itemName then count = count + 1 end
     end
     return count
+end
+
+local function countMarshmallows()
+    return math.min(
+        countItems("Sugar Block Bag"),
+        countItems("Water"),
+        countItems("Gelatin")
+    )
 end
 
 local function equipItem(itemName)
@@ -60,54 +61,38 @@ local function equipItem(itemName)
     local tool = LocalPlayer.Backpack:FindFirstChild(itemName)
     if tool then
         local hum = character:FindFirstChild("Humanoid")
-        if hum then
-            hum:EquipTool(tool)
-            return true
-        end
+        if hum then hum:EquipTool(tool) return true end
     end
     return false
 end
 
--- Função para interagir com Lamont Bell instantaneamente
 local function pressLamontBell()
     local ok, err = pcall(function()
         local npc = Workspace.Folders.NPCs:FindFirstChild("Lamont Bell")
         if npc then
-            local upperTorso = npc:FindFirstChild("UpperTorso")
-            if upperTorso then
-                local pp = upperTorso:FindFirstChild("ProximityPrompt")
-                if pp then
-                    pp.HoldDuration = 0 -- interação instantânea
-                    fireproximityprompt(pp)
-                end
+            local pp = npc:FindFirstChild("UpperTorso"):FindFirstChild("ProximityPrompt")
+            if pp then
+                pp.HoldDuration = 0
+                fireproximityprompt(pp)
             end
         end
     end)
     if not ok then warn("Erro ao interagir com Lamont Bell:", err) end
 end
 
--- Autofarm
 local function startAutoFarm()
     if farmConnection then farmConnection:Disconnect() end
-    farmTimer = 0
-    equipPending = false
-    currentIndex = 1
-
+    farmTimer, equipPending, currentIndex = 0, false, 1
     farmConnection = RunService.Heartbeat:Connect(function(dt)
         farmTimer = farmTimer + dt
-
         if equipPending then
             equipTimer = equipTimer + dt
             if equipTimer >= EQUIP_DELAY then
-                equipPending = false
-                equipTimer = 0
-                farmTimer = 0
+                equipPending, equipTimer, farmTimer = false, 0, 0
             end
         elseif farmTimer >= farmItems[currentIndex].cooldown then
-            local success = equipItem(farmItems[currentIndex].name)
-            if success then
-                equipPending = true
-                equipTimer = 0
+            if equipItem(farmItems[currentIndex].name) then
+                equipPending, equipTimer = true, 0
             end
             currentIndex = currentIndex % #farmItems + 1
             farmTimer = 0
@@ -116,58 +101,43 @@ local function startAutoFarm()
 end
 
 local function stopAutoFarm()
-    if farmConnection then
-        farmConnection:Disconnect()
-        farmConnection = nil
-    end
-    equipPending = false
-    equipTimer = 0
-    farmTimer = 0
-    currentIndex = 1
+    if farmConnection then farmConnection:Disconnect() farmConnection = nil end
+    equipPending, equipTimer, farmTimer, currentIndex = false, 0, 0, 1
 end
 
--- Função para contar marshmallows possíveis
-local function countMarshmallows()
-    local sugarCount = countItems("Sugar Block Bag")
-    local waterCount = countItems("Water")
-    local gelatinCount = countItems("Gelatin")
-    return math.min(sugarCount, waterCount, gelatinCount)
-end
-
--- UI Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
+-- UI Rayfield (já importada no seu exemplo)
+local Rayfield = getgenv().uilibray
 local Window = Rayfield:CreateWindow({
-    Name = "AXIOS Farm",
+    Name = "AXIOS Hub",
     Icon = 107904589783906,
-    LoadingTitle = "sexy glovees",
-    LoadingSubtitle = "Farm integrado",
+    LoadingTitle = "AXIOS",
+    LoadingSubtitle = "Hub modular",
     Theme = "Default",
     DisableRayfieldPrompts = true,
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = "FarmConfigs",
-        FileName = "Configuration",
+        FolderName = "AXIOSConfigs",
+        FileName = "Config",
     },
 })
 
+-- Abas já existentes
+local Settings = Window:CreateTab("Limbs", "scale-3d")
+local Tab = Window:CreateTab("Sense", "eye")
+local Target = Window:CreateTab("Target", "crosshair")
+local Themes = Window:CreateTab("Themes", "palette")
+
+-- Nova aba Farm
 local FarmTab = Window:CreateTab("Farm", "package")
 
--- Toggle para iniciar/parar AutoFarm
 FarmTab:CreateToggle({
     Name = "Iniciar AutoFarm",
     CurrentValue = false,
-    Flag = "AutoFarm",
     Callback = function(state)
-        if state then
-            startAutoFarm()
-        else
-            stopAutoFarm()
-        end
+        if state then startAutoFarm() else stopAutoFarm() end
     end,
 })
 
--- Botão de clique único para AutoSell Lamont Bell
 FarmTab:CreateButton({
     Name = "AutoSell Lamont Bell",
     Callback = function()
@@ -175,39 +145,30 @@ FarmTab:CreateButton({
     end,
 })
 
--- Botão para mostrar inventário
 local invLabel = FarmTab:CreateLabel("Inventário vazio")
 FarmTab:CreateButton({
     Name = "Mostrar Inventário",
     Callback = function()
         local inv = getInventory()
-        if #inv > 0 then
-            invLabel:Set("Inventário: " .. table.concat(inv, ", "))
-        else
-            invLabel:Set("Inventário vazio")
-        end
+        invLabel:Set(#inv > 0 and ("Inventário: " .. table.concat(inv, ", ")) or "Inventário vazio")
     end,
 })
 
--- Label único para mostrar marshmallows
 local marshmallowLabel = FarmTab:CreateLabel("🍡 Você pode cozinhar até 0 marshmallows")
-
--- Toggle para contador em tempo real
 FarmTab:CreateToggle({
     Name = "Contador de Marshmallows",
     CurrentValue = false,
-    Flag = "MarshCounter",
     Callback = function(state)
         if state then
             if marshmallowConnection then marshmallowConnection:Disconnect() end
-            marshmallowConnection = RunService.Heartbeat:Connect(function()
-                marshmallowLabel:Set("🍡 Você pode cozinhar até " .. countMarshmallows() .. " marshmallows")
+            marshmallowConnection = task.spawn(function()
+                while task.wait(1) do
+                    if not marshmallowConnection then break end
+                    marshmallowLabel:Set("🍡 Você pode cozinhar até " .. countMarshmallows() .. " marshmallows")
+                end
             end)
         else
-            if marshmallowConnection then
-                marshmallowConnection:Disconnect()
-                marshmallowConnection = nil
-            end
+            marshmallowConnection = nil
         end
     end,
 })
