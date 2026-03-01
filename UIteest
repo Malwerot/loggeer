@@ -108,62 +108,55 @@ local function stopAutoFarm()
 end
 
 -- =========================
--- UI RAYFIELD
+-- UI ORIONLIB
 -- =========================
-getgenv().uilibray = getgenv().uilibray or loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local Rayfield = getgenv().uilibray
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
-local Window = Rayfield:CreateWindow({
-    Name = "AXIOS Hub",
-    Icon = 107904589783906,
-    LoadingTitle = "AXIOS",
-    LoadingSubtitle = "Hub modular",
-    Theme = "Default",
-    DisableRayfieldPrompts = true,
-    ConfigurationSaving = {
-        Enabled = false, -- desativado para não puxar configs toda hora
-    },
+local Window = OrionLib:MakeWindow({
+    Name = "AXIOS Farm Hub",
+    HidePremium = false,
+    SaveConfig = false,
+    ConfigFolder = "AXIOSFarm"
 })
 
--- Abas originais
-local Settings = Window:CreateTab("Limbs", "scale-3d")
-local Tab = Window:CreateTab("Sense", "eye")
-local Target = Window:CreateTab("Target", "crosshair")
-local Themes = Window:CreateTab("Themes", "palette")
+local FarmTab = Window:MakeTab({
+    Name = "Farm",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
--- =========================
--- NOVA ABA FARM
--- =========================
-local FarmTab = Window:CreateTab("Farm", "package")
-
-FarmTab:CreateToggle({
+FarmTab:AddToggle({
     Name = "Iniciar AutoFarm",
-    CurrentValue = false,
+    Default = false,
     Callback = function(state)
         if state then startAutoFarm() else stopAutoFarm() end
-    end,
+    end
 })
 
-FarmTab:CreateButton({
+FarmTab:AddButton({
     Name = "AutoSell Lamont Bell",
     Callback = function()
         pressLamontBell()
-    end,
+    end
 })
 
-local invLabel = FarmTab:CreateLabel("Inventário vazio")
-FarmTab:CreateButton({
+FarmTab:AddButton({
     Name = "Mostrar Inventário",
     Callback = function()
         local inv = getInventory()
-        invLabel:Set(#inv > 0 and ("Inventário: " .. table.concat(inv, ", ")) or "Inventário vazio")
-    end,
+        OrionLib:MakeNotification({
+            Name = "Inventário",
+            Content = #inv > 0 and table.concat(inv, ", ") or "Inventário vazio",
+            Time = 5
+        })
+    end
 })
 
-local marshmallowLabel = FarmTab:CreateLabel("🍡 Você pode cozinhar até 0 marshmallows")
-FarmTab:CreateToggle({
+local marshmallowLabel = FarmTab:AddLabel("🍡 Você pode cozinhar até 0 marshmallows")
+
+FarmTab:AddToggle({
     Name = "Contador de Marshmallows",
-    CurrentValue = false,
+    Default = false,
     Callback = function(state)
         if state then
             marshmallowConnection = task.spawn(function()
@@ -175,5 +168,7 @@ FarmTab:CreateToggle({
         else
             marshmallowConnection = nil
         end
-    end,
+    end
 })
+
+OrionLib:Init()
