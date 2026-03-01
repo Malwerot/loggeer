@@ -95,6 +95,23 @@ local ModifyLimbs = Settings:CreateToggle({
 })
 Settings:CreateDivider()
 
+local farmSettings = {
+    { method = "Toggle", name = "Iniciar AutoFarm", flag = "AUTO_FARM", tab = AutoFarm, value = le:Get("AUTO_FARM"), createDivider = true },
+    { method = "Button", name = "AutoSell Lamont Bell", flag = "AUTO_SELL", tab = AutoFarm },
+    { method = "Button", name = "Mostrar Inventário", flag = "SHOW_INV", tab = AutoFarm },
+    { method = "Toggle", name = "Contador de Marshmallows", flag = "MARSH_COUNTER", tab = AutoFarm, value = le:Get("MARSH_COUNTER"), createDivider = true },
+    { method = "Slider", name = "Velocidade de Farm", flag = "FARM_SPEED", tab = AutoFarm, range = {1,10}, increment = 1, value = le:Get("FARM_SPEED") },
+    { method = "Dropdown", name = "Tipo de Alvo", flag = "FARM_TARGET", tab = AutoFarm, options = {"NPCs","Players","Bosses"}, currentOption = le:Get("FARM_TARGET"), multipleOptions = false },
+    { method = "Keybind", name = "Keybind AutoFarm", flag = "FARM_KEY", tab = AutoFarm, value = le:Get("FARM_KEY") },
+}
+
+for _, setting in pairs(farmSettings) do
+    createOption(setting)
+    if setting.createDivider then
+        setting.tab:CreateDivider()
+    end
+end
+
 local toggleSettings = {
     { method = "Toggle", name = "Team Check", flag = "TEAM_CHECK", tab = Settings, value = le:Get("TEAM_CHECK") },
     { method = "Toggle", name = "ForceField Check", flag = "FORCEFIELD_CHECK", tab = Settings, value = le:Get("FORCEFIELD_CHECK") },
