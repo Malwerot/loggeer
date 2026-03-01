@@ -221,6 +221,54 @@ local function slider(name, flag, range, default, inc, setting)
     return { type = "slider", name = name, flag = flag, range = range, default = default, increment = inc, setting = setting }
 end
 
+local uiFarm = {
+    { type = "section", name = "Controle de Farm" },
+
+    { type = "toggle", name = "Iniciar AutoFarm", flag = "AutoFarmEnabled", default = false,
+      onChange = function(v)
+          -- depois conecta em startAutoFarm/stopAutoFarm
+      end },
+
+    { type = "button", name = "AutoSell Lamont Bell",
+      onChange = function()
+          -- depois conecta em pressLamontBell()
+      end },
+
+    { type = "button", name = "Mostrar Inventário",
+      onChange = function()
+          -- depois conecta em getInventory()
+      end },
+
+    { type = "label", name = "🍡 Você pode cozinhar até 0 marshmallows" },
+
+    { type = "toggle", name = "Contador de Marshmallows", flag = "MarshCounter", default = false,
+      onChange = function(v)
+          -- depois conecta em countMarshmallows()
+      end },
+
+    { type = "section", name = "Configurações Extras" },
+
+    { type = "slider", name = "Velocidade de Farm", flag = "FarmSpeed", range = {1,10}, default = 5, increment = 1,
+      onChange = function(v)
+          -- depois conecta em ajuste de velocidade
+      end },
+
+    { type = "dropdown", name = "Tipo de Alvo", flag = "FarmTarget",
+      options = {"NPCs","Players","Bosses"}, current = "NPCs",
+      onChange = function(v)
+          -- depois conecta em seleção de alvo
+      end },
+
+    { type = "keybind", name = "Keybind AutoFarm", flag = "FarmKey", current = "F",
+      onChange = function()
+          -- depois conecta em toggle rápido
+      end },
+}
+
+for _, entry in ipairs(ui) do
+    createControl(entry)
+end
+
 local ui = {
     { type = "section", name = "Team Settings" },
     { type = "toggle", name = "Hide Team", flag = "HideTeam", default = false, onChange = function(v) Sense.teamSettings.friendly.enabled = not v end },
