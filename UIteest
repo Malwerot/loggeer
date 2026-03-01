@@ -4,7 +4,9 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Lógica de Farm (pode virar módulo separado depois)
+-- =========================
+-- LÓGICA DE FARM
+-- =========================
 local farmConnection
 local marshmallowConnection
 local currentIndex, farmTimer, equipPending, equipTimer = 1, 0, false, 0
@@ -105,29 +107,49 @@ local function stopAutoFarm()
     equipPending, equipTimer, farmTimer, currentIndex = false, 0, 0, 1
 end
 
--- UI Rayfield (já importada no seu exemplo)
+-- =========================
+-- UI RAYFIELD
+-- =========================
+getgenv().uilibray = getgenv().uilibray or loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Rayfield = getgenv().uilibray
+
+local Messages = {
+    "happy halloween 🎃",
+    "skeleton meme from 2021 💀",
+    "spooky ass message 🕸🕷",
+    "THE FLYING DUTCHMAN! ⚓",
+    "👻 BOO! JOB APPLICATION 📄",
+    "trick or treat smell my feet 🦶",
+    "santa claus is lowkey a freak 😰",
+    "spooky scary coolkids 😈",
+    "itsa spooki month 🕺🕺",
+    "kitkat razerblade edition 🍬",
+    "update: nothing 🎃😨",
+    "follow axiogenesis on roblox 🦴👁",
+}
+local ChosenMessage = Messages[math.random(1, #Messages)]
+
 local Window = Rayfield:CreateWindow({
     Name = "AXIOS Hub",
     Icon = 107904589783906,
     LoadingTitle = "AXIOS",
-    LoadingSubtitle = "Hub modular",
+    LoadingSubtitle = ChosenMessage,
     Theme = "Default",
     DisableRayfieldPrompts = true,
     ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "AXIOSConfigs",
-        FileName = "Config",
+        Enabled = false, -- desativado para não puxar configs toda hora
     },
 })
 
--- Abas já existentes
+-- Abas originais
 local Settings = Window:CreateTab("Limbs", "scale-3d")
 local Tab = Window:CreateTab("Sense", "eye")
 local Target = Window:CreateTab("Target", "crosshair")
 local Themes = Window:CreateTab("Themes", "palette")
 
--- Nova aba Farm
+-- =========================
+-- NOVA ABA FARM
+-- =========================
 local FarmTab = Window:CreateTab("Farm", "package")
 
 FarmTab:CreateToggle({
@@ -160,7 +182,6 @@ FarmTab:CreateToggle({
     CurrentValue = false,
     Callback = function(state)
         if state then
-            if marshmallowConnection then marshmallowConnection:Disconnect() end
             marshmallowConnection = task.spawn(function()
                 while task.wait(1) do
                     if not marshmallowConnection then break end
