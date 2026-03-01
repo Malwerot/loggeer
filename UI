@@ -4,8 +4,6 @@ local LocalPlayer = Players.LocalPlayer
 getgenv().le = getgenv().le or loadstring(game:HttpGet('https://raw.githubusercontent.com/AAPVdev/scripts/refs/heads/main/LimbExtender.lua'))()
 local LimbExtender = getgenv().le
 
-local AutoFarmScript = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/autofarm.lua"))()
-
 local le = LimbExtender({
     LISTEN_FOR_INPUT = false,
     USE_HIGHLIGHT = false,
@@ -13,6 +11,8 @@ local le = LimbExtender({
 
 getgenv().uilibray = getgenv().uilibray or loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Rayfield = getgenv().uilibray
+
+local AutoFarmScript = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/autofarm.lua"))()
 
 local Messages = {
     "happy halloween 🎃",
