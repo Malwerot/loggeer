@@ -49,6 +49,7 @@ local Settings = Window:CreateTab("Limbs", "scale-3d")
 local Tab = Window:CreateTab("Sense", "eye")
 local Target = Window:CreateTab("Target", "crosshair")
 local Themes = Window:CreateTab("Themes", "palette")
+local AutoFarm = Window:CreateTab("AutoFarm", "user")
 
 local function safeCreate(tab, methodName, opts)
     local method = tab[methodName]
