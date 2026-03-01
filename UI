@@ -45,7 +45,7 @@ local Window = Rayfield:CreateWindow({
     },
 })
 
-local AutoFarm = Window:CreateTab("AutoFarm", "moon")
+local AutoFarm = Window:CreateTab("AutoFarm", "badge-dollar-sign")
 local Settings = Window:CreateTab("Limbs", "scale-3d")
 local Tab = Window:CreateTab("Sense", "eye")
 local Target = Window:CreateTab("Target", "crosshair")
