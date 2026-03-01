@@ -45,11 +45,11 @@ local Window = Rayfield:CreateWindow({
     },
 })
 
+local AutoFarm = Window:CreateTab("AutoFarm", "moon")
 local Settings = Window:CreateTab("Limbs", "scale-3d")
 local Tab = Window:CreateTab("Sense", "eye")
 local Target = Window:CreateTab("Target", "crosshair")
 local Themes = Window:CreateTab("Themes", "palette")
-local AutoFarm = Window:CreateTab("AutoFarm", "money")
 
 local function safeCreate(tab, methodName, opts)
     local method = tab[methodName]
