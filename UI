@@ -12,8 +12,6 @@ local le = LimbExtender({
 getgenv().uilibray = getgenv().uilibray or loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Rayfield = getgenv().uilibray
 
-local AutoFarmScript = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/autofarm.lua"))()
-
 local Messages = {
     "happy halloween 🎃",
     "skeleton meme from 2021 💀",
@@ -310,53 +308,4 @@ end
 LocalPlayer.CharacterAdded:Connect(characterAdded)
 if LocalPlayer.Character then
     characterAdded(LocalPlayer.Character)
-end
-
--- Definição dos controles da aba AutoFarm
-local uiAutoFarm = {
-    { type = "section", name = "Controle" },
-
-    { type = "toggle", name = "Iniciar AutoFarm", flag = "AutoFarmToggle", default = false,
-      onChange = function(v)
-          if v then AutoFarmScript.startAutoFarm() else AutoFarmScript.stopAutoFarm() end
-      end },
-
-    { type = "button", name = "AutoSell Lamont Bell",
-      onChange = function() AutoFarmScript.pressLamontBell() end },
-
-    { type = "button", name = "Mostrar Inventário",
-      onChange = function()
-          local inv = AutoFarmScript.getInventory()
-          for _, itemName in ipairs(inv) do
-              Rayfield:Notify({
-                  Title = "Inventário",
-                  Content = itemName,
-                  Duration = 3,
-              })
-          end
-      end },
-
-    { type = "label", name = "🍡 Você pode cozinhar até 0 marshmallows" },
-
-    { type = "toggle", name = "Contador de Marshmallows", flag = "MarshmallowCounter", default = false,
-      onChange = function(v)
-          if v then
-              if _G.marshmallowConnection then _G.marshmallowConnection:Disconnect() end
-              _G.marshmallowConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                  local marshmallowCount = AutoFarmScript.countMarshmallows()
-                  -- Atualiza label dinamicamente
-                  AutoFarm:CreateLabel("🍡 Você pode cozinhar até " .. marshmallowCount .. " marshmallows")
-              end)
-          else
-              if _G.marshmallowConnection then
-                  _G.marshmallowConnection:Disconnect()
-                  _G.marshmallowConnection = nil
-              end
-          end
-      end },
-}
-
--- Cria os controles na aba AutoFarm usando a mesma função createControl
-for _, entry in ipairs(uiAutoFarm) do
-    createControl(entry)
 end
