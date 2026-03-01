@@ -12,8 +12,6 @@ local le = LimbExtender({
 getgenv().uilibray = getgenv().uilibray or loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Rayfield = getgenv().uilibray
 
-local AutoFarmScript = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/autofarm.lua"))()
-
 local Messages = {
     "happy halloween 🎃",
     "skeleton meme from 2021 💀",
@@ -61,82 +59,6 @@ local function safeCreate(tab, methodName, opts)
         warn("Method " .. tostring(methodName) .. " not found on tab")
     end
 end
-
--- Botão/toggle para iniciar/parar o AutoFarm
-AutoFarm:CreateToggle({
-    Name = "Iniciar AutoFarm",
-    CurrentValue = false,
-    Flag = "AutoFarmToggle",
-    Callback = function(state)
-        if state then
-            AutoFarmScript.startAutoFarm()
-            Rayfield:Notify({
-                Title = "AutoFarm",
-                Content = "AutoFarm iniciado!",
-                Duration = 3,
-            })
-        else
-            AutoFarmScript.stopAutoFarm()
-            Rayfield:Notify({
-                Title = "AutoFarm",
-                Content = "AutoFarm parado!",
-                Duration = 3,
-            })
-        end
-    end,
-})
-
--- Botão para vender instantaneamente no Lamont Bell
-AutoFarm:CreateButton({
-    Name = "AutoSell Lamont Bell",
-    Callback = function()
-        AutoFarmScript.pressLamontBell()
-        Rayfield:Notify({
-            Title = "AutoSell",
-            Content = "Venda realizada instantaneamente!",
-            Duration = 3,
-        })
-    end,
-})
-
--- Botão para mostrar inventário atual
-AutoFarm:CreateButton({
-    Name = "Mostrar Inventário",
-    Callback = function()
-        local inv = AutoFarmScript.getInventory()
-        for i, itemName in ipairs(inv) do
-            Rayfield:Notify({
-                Title = "Inventário",
-                Content = itemName,
-                Duration = 3,
-            })
-        end
-    end,
-})
-
--- Label e toggle para contador de marshmallows
-local marshmallowLabel = AutoFarm:CreateLabel("🍡 Você pode cozinhar até 0 marshmallows")
-local marshmallowConnection
-
-AutoFarm:CreateToggle({
-    Name = "Contador de Marshmallows",
-    CurrentValue = false,
-    Flag = "MarshmallowCounter",
-    Callback = function(state)
-        if state then
-            if marshmallowConnection then marshmallowConnection:Disconnect() end
-            marshmallowConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                local marshmallowCount = AutoFarmScript.countMarshmallows()
-                marshmallowLabel:Set("🍡 Você pode cozinhar até " .. marshmallowCount .. " marshmallows")
-            end)
-        else
-            if marshmallowConnection then
-                marshmallowConnection:Disconnect()
-                marshmallowConnection = nil
-            end
-        end
-    end,
-})
 
 local function createOption(params)
     local methodName = "Create" .. params.method
@@ -386,4 +308,77 @@ end
 LocalPlayer.CharacterAdded:Connect(characterAdded)
 if LocalPlayer.Character then
     characterAdded(LocalPlayer.Character)
+end
+
+-- Importa o script de AutoFarm
+local AutoFarmScript = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/autofarm.lua"))()
+
+-- Função de criação de controles para a aba AutoFarm
+local function createFarmControl(def)
+    if not def or not def.type then return end
+
+    local function controlCallback(v)
+        if def.onChange then def.onChange(v) end
+    end
+
+    if def.type == "section" then
+        AutoFarm:CreateSection(def.name or "")
+    elseif def.type == "label" then
+        AutoFarm:CreateLabel(def.name or "")
+    elseif def.type == "toggle" then
+        AutoFarm:CreateToggle({
+            Name = def.name,
+            CurrentValue = def.default or false,
+            Flag = def.flag or "",
+            Callback = controlCallback
+        })
+    elseif def.type == "button" then
+        AutoFarm:CreateButton({
+            Name = def.name,
+            Callback = function() controlCallback(true) end
+        })
+    end
+end
+
+-- Definição dos controles da aba AutoFarm
+local uiAutoFarm = {
+    { type = "section", name = "Controle" },
+    { type = "toggle", name = "Iniciar AutoFarm", flag = "AutoFarmToggle", default = false,
+      onChange = function(v)
+          if v then AutoFarmScript.startAutoFarm() else AutoFarmScript.stopAutoFarm() end
+      end },
+    { type = "button", name = "AutoSell Lamont Bell",
+      onChange = function() AutoFarmScript.pressLamontBell() end },
+    { type = "button", name = "Mostrar Inventário",
+      onChange = function()
+          local inv = AutoFarmScript.getInventory()
+          for _, itemName in ipairs(inv) do
+              Rayfield:Notify({
+                  Title = "Inventário",
+                  Content = itemName,
+                  Duration = 3,
+              })
+          end
+      end },
+    { type = "label", name = "🍡 Você pode cozinhar até 0 marshmallows" },
+    { type = "toggle", name = "Contador de Marshmallows", flag = "MarshmallowCounter", default = false,
+      onChange = function(v)
+          if v then
+              if _G.marshmallowConnection then _G.marshmallowConnection:Disconnect() end
+              _G.marshmallowConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                  local marshmallowCount = AutoFarmScript.countMarshmallows()
+                  AutoFarm:CreateLabel("🍡 Você pode cozinhar até " .. marshmallowCount .. " marshmallows")
+              end)
+          else
+              if _G.marshmallowConnection then
+                  _G.marshmallowConnection:Disconnect()
+                  _G.marshmallowConnection = nil
+              end
+          end
+      end },
+}
+
+-- Cria os controles na aba AutoFarm
+for _, entry in ipairs(uiAutoFarm) do
+    createFarmControl(entry)
 end
