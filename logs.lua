@@ -1,4 +1,3 @@
--- Serviços
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local logEnabled = false
@@ -14,36 +13,39 @@ Section:NewToggle("Ativar Logger", "Liga/Desliga", function(state)
     print(state and "=== Logger ATIVADO ===" or "=== Logger DESATIVADO ===")
 end)
 
--- Hook Remotes
-local function hookRemotes()
-    for _, obj in ipairs(game:GetDescendants()) do
-        pcall(function()
-            if obj:IsA("RemoteEvent") then
-                local oldFire = obj.FireServer
-                obj.FireServer = function(self, ...)
-                    if logEnabled then
-                        local argsStr = ""
-                        for _, v in ipairs({...}) do argsStr = argsStr .. tostring(v) .. ", " end
-                        print("[REMOTE]", obj:GetFullName(), "| Enviou:", argsStr)
-                    end
-                    return oldFire(self, ...)
-                end
-            elseif obj:IsA("RemoteFunction") then
-                local oldInvoke = obj.InvokeServer
-                obj.InvokeServer = function(self, ...)
-                    if logEnabled then
-                        local argsStr = ""
-                        for _, v in ipairs({...}) do argsStr = argsStr .. tostring(v) .. ", " end
-                        print("[INVOKE]", obj:GetFullName(), "| Enviou:", argsStr)
-                    end
-                    return oldInvoke(self, ...)
-                end
-            end
-        end)
-    end
+-- Hook em botões da GUI (loja usa TextButton/ImageButton)
+local function hookButton(btn)
+    btn.MouseButton1Click:Connect(function()
+        if logEnabled then
+            print("[CLIQUE GUI]", btn:GetFullName(), "| Texto:", btn.Text or "sem texto")
+        end
+    end)
 end
 
-game.DescendantAdded:Connect(function(obj)
+local function hookAllButtons(gui)
+    for _, obj in ipairs(gui:GetDescendants()) do
+        if obj:IsA("TextButton") or obj:IsA("ImageButton") then
+            hookButton(obj)
+        end
+    end
+    gui.DescendantAdded:Connect(function(obj)
+        if obj:IsA("TextButton") or obj:IsA("ImageButton") then
+            hookButton(obj)
+        end
+    end)
+end
+
+-- Monitora todas as GUIs do jogador
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+for _, gui in ipairs(playerGui:GetChildren()) do
+    hookAllButtons(gui)
+end
+playerGui.ChildAdded:Connect(function(gui)
+    hookAllButtons(gui)
+end)
+
+-- Hook Remotes
+for _, obj in ipairs(game:GetDescendants()) do
     pcall(function()
         if obj:IsA("RemoteEvent") then
             local oldFire = obj.FireServer
@@ -55,25 +57,22 @@ game.DescendantAdded:Connect(function(obj)
                 end
                 return oldFire(self, ...)
             end
-        end
-    end)
-end)
-
--- Proximity Prompts
-local function hookPrompt(prompt)
-    prompt.Triggered:Connect(function(player)
-        if player == LocalPlayer and logEnabled then
-            print("[PROMPT]", prompt.Parent.Name, "|", prompt:GetFullName())
+        elseif obj:IsA("RemoteFunction") then
+            local oldInvoke = obj.InvokeServer
+            obj.InvokeServer = function(self, ...)
+                if logEnabled then
+                    local argsStr = ""
+                    for _, v in ipairs({...}) do argsStr = argsStr .. tostring(v) .. ", " end
+                    print("[INVOKE]", obj:GetFullName(), "| Enviou:", argsStr)
+                end
+                return oldInvoke(self, ...)
+            end
         end
     end)
 end
+```
 
-for _, obj in ipairs(workspace:GetDescendants()) do
-    if obj:IsA("ProximityPrompt") then hookPrompt(obj) end
-end
-
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("ProximityPrompt") then hookPrompt(obj) end
-end)
-
-hookRemotes()
+Quando clicar em **ARPistol**, **G29Switch** ou **Fully-MicroAR** vai aparecer algo assim:
+```
+[CLIQUE GUI] PlayerGui.ShopGui.Frame.ARPistol | Texto: ARPistol
+[REMOTE] ReplicatedStorage.Remotes.BuyWeapon | Enviou: ARPistol, 99999
