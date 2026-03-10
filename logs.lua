@@ -1,51 +1,72 @@
 -- Serviços
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Variável de controle
 local logEnabled = false
 
--- Função para registrar interações
-local function logPrompt(prompt)
-    prompt.Triggered:Connect(function(player)
-        if logEnabled and player == LocalPlayer then
-            print(">>> Interagiu com:", prompt.Parent.Name, " | Caminho:", prompt:GetFullName())
-        end
+local function hookCharacter(char)
+    -- Loga TUDO que for adicionado/removido do character
+    char.DescendantAdded:Connect(function(obj)
+        print("[ADDED]", obj.ClassName, "|", obj:GetFullName())
     end)
-end
 
--- Percorre todos os ProximityPrompts do jogo e conecta o logger
-local function registerAllPrompts()
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            logPrompt(obj)
+    char.DescendantRemoving:Connect(function(obj)
+        print("[REMOVED]", obj.ClassName, "|", obj:GetFullName())
+    end)
+
+    -- Loga TODA mudança de propriedade em qualquer objeto do character
+    for _, obj in ipairs(char:GetDescendants()) do
+        obj.Changed:Connect(function(prop)
+            if logEnabled then
+                print("[CHANGED]", obj:GetFullName(), "|", prop, "=", tostring(obj[prop]))
+            end
+        end)
+    end
+
+    -- Conecta Changed nos novos objetos também
+    char.DescendantAdded:Connect(function(obj)
+        obj.Changed:Connect(function(prop)
+            if logEnabled then
+                pcall(function()
+                    print("[CHANGED]", obj:GetFullName(), "|", prop, "=", tostring(obj[prop]))
+                end)
+            end
+        end)
+    end)
+
+    -- RemoteEvents e RemoteFunctions disparadas pelo character
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            local old = obj.OnClientEvent
+            pcall(function()
+                obj.OnClientEvent:Connect(function(...)
+                    if logEnabled then
+                        print("[REMOTE EVENT]", obj:GetFullName(), "| args:", ...)
+                    end
+                end)
+            end)
         end
     end
 end
 
--- Atualiza automaticamente quando novos prompts aparecem
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("ProximityPrompt") then
-        logPrompt(obj)
-    end
+-- Conecta no character atual e futuros
+if LocalPlayer.Character then
+    hookCharacter(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    hookCharacter(char)
 end)
 
--- Inicializa
-registerAllPrompts()
-
--- UI básica
+-- UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/UUII.lua"))()
 local Window = Library.CreateLib("Logger", "DarkTheme")
 
 local TabLogger = Window:NewTab("Logger")
 local SectionLogger = TabLogger:NewSection("Controle")
 
-SectionLogger:NewToggle("Ativar Logger", "Liga/Desliga o registro de interações", function(state)
+SectionLogger:NewToggle("Ativar Logger", "Liga/Desliga", function(state)
     logEnabled = state
-    if state then
-        print("Logger ativado! Todas as interações vão aparecer nos logs.")
-    else
-        print("Logger desativado! Nenhuma interação será registrada.")
-    end
+    print(state and "=== Logger ATIVADO ===" or "=== Logger DESATIVADO ===")
 end)
