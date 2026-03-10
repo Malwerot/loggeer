@@ -4,48 +4,67 @@ local LocalPlayer = Players.LocalPlayer
 
 local logEnabled = false
 
-local function hookCharacter(char)
-    local humanoid = char:WaitForChild("Humanoid")
-
-    -- Morte
-    humanoid.Died:Connect(function()
-        if logEnabled then print("[MORTE] Personagem morreu") end
-    end)
-
-    -- Sentar
-    humanoid.Seated:Connect(function(active, seat)
-        if logEnabled then
-            if active and seat then
-                print("[SENTOU] Em:", seat:GetFullName())
-            else
-                print("[LEVANTOU]")
+-- Hook em TODAS RemoteEvents e RemoteFunctions do jogo
+local function hookRemotes()
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            -- Intercepta o FireServer (quando VOCÊ manda pro servidor)
+            local oldFire = obj.FireServer
+            obj.FireServer = function(self, ...)
+                if logEnabled then
+                    local args = {...}
+                    local argsStr = ""
+                    for _, v in ipairs(args) do
+                        argsStr = argsStr .. tostring(v) .. ", "
+                    end
+                    print("[LOJA/REMOTE]", obj:GetFullName(), "| Enviou:", argsStr)
+                end
+                return oldFire(self, ...)
             end
         end
-    end)
 
-    -- Tools equipadas/desequipadas
-    char.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") and logEnabled then
-            print("[EQUIPOU TOOL]", child.Name)
-
-            child.Activated:Connect(function()
-                if logEnabled then print("[USOU TOOL]", child.Name) end
-            end)
+        if obj:IsA("RemoteFunction") then
+            local oldInvoke = obj.InvokeServer
+            obj.InvokeServer = function(self, ...)
+                if logEnabled then
+                    local args = {...}
+                    local argsStr = ""
+                    for _, v in ipairs(args) do
+                        argsStr = argsStr .. tostring(v) .. ", "
+                    end
+                    print("[LOJA/INVOKE]", obj:GetFullName(), "| Enviou:", argsStr)
+                end
+                return oldInvoke(self, ...)
+            end
         end
-    end)
-
-    char.ChildRemoved:Connect(function(child)
-        if child:IsA("Tool") and logEnabled then
-            print("[DESEQUIPOU TOOL]", child.Name)
-        end
-    end)
+    end
 end
 
--- Proximity Prompts
+-- Novos remotes que aparecerem
+game.DescendantAdded:Connect(function(obj)
+    if obj:IsA("RemoteEvent") then
+        local oldFire = obj.FireServer
+        obj.FireServer = function(self, ...)
+            if logEnabled then
+                local args = {...}
+                local argsStr = ""
+                for _, v in ipairs(args) do
+                    argsStr = argsStr .. tostring(v) .. ", "
+                end
+                print("[LOJA/REMOTE]", obj:GetFullName(), "| Enviou:", argsStr)
+            end
+            return oldFire(self, ...)
+        end
+    end
+end)
+
+hookRemotes()
+
+-- Proximity Prompts (lojas físicas)
 local function hookPrompt(prompt)
     prompt.Triggered:Connect(function(player)
         if player == LocalPlayer and logEnabled then
-            print("[INTERAGIU]", prompt.Parent.Name, "|", prompt:GetFullName())
+            print("[LOJA/PROMPT]", prompt.Parent.Name, "|", prompt:GetFullName())
         end
     end)
 end
@@ -62,24 +81,6 @@ end)
 
 registerPrompts()
 
--- Backpack
-local backpack = LocalPlayer:WaitForChild("Backpack")
-backpack.ChildAdded:Connect(function(child)
-    if logEnabled then print("[PEGOU ITEM]", child.Name) end
-end)
-backpack.ChildRemoved:Connect(function(child)
-    if logEnabled then print("[PERDEU ITEM]", child.Name) end
-end)
-
--- Chat
-LocalPlayer.Chatted:Connect(function(msg)
-    if logEnabled then print("[CHAT]", msg) end
-end)
-
--- Character
-if LocalPlayer.Character then hookCharacter(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(hookCharacter)
-
 -- UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/UUII.lua"))()
 local Window = Library.CreateLib("Logger", "DarkTheme")
@@ -90,3 +91,10 @@ Section:NewToggle("Ativar Logger", "Liga/Desliga", function(state)
     logEnabled = state
     print(state and "=== Logger ATIVADO ===" or "=== Logger DESATIVADO ===")
 end)
+```
+
+Agora quando você interagir com a loja vai aparecer:
+```
+[LOJA/REMOTE] ReplicatedStorage.Remotes.BuyItem | Enviou: Sword, 1, 
+[LOJA/INVOKE] ReplicatedStorage.Shop.Purchase | Enviou: ItemID_123, 
+[LOJA/PROMPT] Vendedor | Workspace.Shop.NPC.ProximityPrompt
