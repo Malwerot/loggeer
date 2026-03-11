@@ -1,19 +1,20 @@
+-- Serviços
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local logEnabled = false
 
--- UI PRIMEIRO
+-- UI (estrutura original que funcionava)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/UUII.lua"))()
 local Window = Library.CreateLib("Logger", "DarkTheme")
-local Tab = Window:NewTab("Logger")
-local Section = Tab:NewSection("Controle")
+local TabLogger = Window:NewTab("Logger")
+local SectionLogger = TabLogger:NewSection("Controle")
 
-Section:NewToggle("Ativar Logger", "Liga/Desliga", function(state)
+SectionLogger:NewToggle("Ativar Logger", "Liga/Desliga o registro de interações", function(state)
     logEnabled = state
     print(state and "=== Logger ATIVADO ===" or "=== Logger DESATIVADO ===")
 end)
 
--- Hook em botões da GUI (loja usa TextButton/ImageButton)
+-- Hook em botões da GUI
 local function hookButton(btn)
     btn.MouseButton1Click:Connect(function()
         if logEnabled then
@@ -35,7 +36,6 @@ local function hookAllButtons(gui)
     end)
 end
 
--- Monitora todas as GUIs do jogador
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 for _, gui in ipairs(playerGui:GetChildren()) do
     hookAllButtons(gui)
@@ -70,9 +70,3 @@ for _, obj in ipairs(game:GetDescendants()) do
         end
     end)
 end
-```
-
-Quando clicar em **ARPistol**, **G29Switch** ou **Fully-MicroAR** vai aparecer algo assim:
-```
-[CLIQUE GUI] PlayerGui.ShopGui.Frame.ARPistol | Texto: ARPistol
-[REMOTE] ReplicatedStorage.Remotes.BuyWeapon | Enviou: ARPistol, 99999
