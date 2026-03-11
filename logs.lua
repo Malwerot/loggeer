@@ -1,102 +1,93 @@
 --[[
-    INTEGRAÇÃO TOTAL: UI + LÓGICA DE MERCADO (LOCAL FUNCTIONS)
-    Alvo: Bronx Market 2
+    SCRIPT INTEGRADO - BRONX MARKET 2 (DEV EDITION)
+    Lógica: Funções Locais para Performance
+    Objetivo: Venda/Compra sem cooldown visual
 --]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer = Players.LocalPlayer
 
--- Configurações de Inicialização
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/UUII.lua"))()
-local Window = Library:CreateLib("Dev Console - Market", "DarkTheme")
-local Tab = Window:NewTab("Mercado")
-local Section = Tab:NewSection("Controle de Vendas/Compras")
+-- Garante que o jogo carregou antes de iniciar a UI
+if not game:IsLoaded() then game.Loaded:Wait() end
 
--- Variáveis de Estado
-_G.BatchAmount = 2
-_G.AutoMode = false
+-- 1. Carregamento da Library com tratamento de erro
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/UUII.lua"))()
+
+-- 2. Criação da Janela (Algumas libraries precisam de variáveis específicas)
+local Window = Library.CreateLib("Market Dev", "DarkTheme")
+
+-- 3. Abas e Seções
+local TabMarket = Window:NewTab("Mercado")
+local SectionAction = TabMarket:NewSection("Ações Rápidas")
+
+-- 4. Variáveis de Controle (Locais)
+local batchQuantity = 2
+local isAutoSelling = false
+local itemName = "Phone" -- Nome do item baseado na sua imagem
 
 --[[ 
-    FUNÇÕES LOCAIS (Lógica de Backend)
+    FUNÇÕES LOCAIS (CORE)
 --]]
 
--- Função para localizar o Remote do seu jogo (Ajuste o nome se necessário)
-local function getMarketRemote()
-    -- Tenta encontrar o Remote de compra ou venda no ReplicatedStorage
-    return ReplicatedStorage:FindFirstChild("MarketEvent") or ReplicatedStorage:FindFirstChild("RemoteEvent")
+-- Localiza o Remote de forma segura
+local function getRemote()
+    -- Procure pelo nome exato do seu RemoteEvent no ReplicatedStorage
+    -- Exemplo: "SellItem", "MarketRemote", etc.
+    return ReplicatedStorage:FindFirstChild("RemoteEvent") or ReplicatedStorage:FindFirstChild("MarketEvent")
 end
 
-local function processAction(actionType, itemName, amount)
-    local remote = getMarketRemote()
+-- Processa a ação múltipla (Onde ocorre a "duplicação" de envio)
+local function sendMarketRequest(action, name, amount)
+    local remote = getRemote()
     if not remote then 
-        warn("Remote de mercado não encontrado no ReplicatedStorage!")
+        warn("Remote não encontrado! Verifique o nome no ReplicatedStorage.")
         return 
     end
 
     for i = 1, amount do
-        -- task.spawn garante que os disparos ocorram quase no mesmo milissegundo
         task.spawn(function()
-            remote:FireServer(actionType, itemName) 
-            -- Exemplo: remote:FireServer("Sell", "Phone")
+            -- O formato do FireServer depende de como você programou seu servidor
+            remote:FireServer(action, name)
         end)
-    end
-    print("Processado: " .. amount .. "x " .. itemName)
-end
-
--- Função para clicar nos botões da UI do jogo (Baseado na sua imagem)
-local function forceClickMarketButton(buttonName)
-    local playerGui = localPlayer:FindFirstChild("PlayerGui")
-    local marketGui = playerGui and playerGui:FindFirstChild("Bronx Market 2")
-    
-    if marketGui then
-        -- Tenta encontrar o botão "Phone" ou outro pelo caminho da imagem
-        local btn = marketGui.Body.Frames.Guns.ScrollingFrame:FindFirstChild(buttonName)
-        if btn and btn:IsA("ImageButton") then
-            firesignal(btn.MouseButton1Click)
-        end
     end
 end
 
 --[[ 
-    ELEMENTOS DA UI (Interação)
+    INTERAÇÃO COM A UI (LIBRARY)
 --]]
 
--- Input para definir a quantidade (Ex: colocar 2 ou 5 de uma vez)
-Section:NewTextBox("Quantidade Multiplicadora", "Padrão é 2", function(txt)
-    local num = tonumber(txt)
-    if num then
-        _G.BatchAmount = num
-        print("Nova quantidade definida: " .. num)
-    end
+-- TextBox para definir a quantidade de uma vez
+SectionAction:NewTextBox("Qtd p/ Venda/Compra", "Ex: 2", function(txt)
+    local n = tonumber(txt)
+    if n then batchQuantity = n end
 end)
 
--- Botão para vender o item da imagem (Phone) em dobro/lote
-Section:NewButton("Vender Lote (Phone)", "Vende a quantidade definida acima", function()
-    processAction("Sell", "Phone", _G.BatchAmount)
+-- Botão para disparar a venda múltipla
+SectionAction:NewButton("Vender " .. itemName .. " (Multi)", "Vende " .. batchQuantity .. " de uma vez", function()
+    sendMarketRequest("Sell", itemName, batchQuantity)
 end)
 
--- Toggle para automação de cliques (Sem Cooldown de espera de animação)
-Section:NewToggle("Auto-Venda Rápida", "Ignora delays visuais da UI", function(state)
-    _G.AutoMode = state
+-- Toggle para o modo automático (Ignora cooldowns da UI visual)
+SectionAction:NewToggle("Auto-Venda (No Cooldown)", "Loop infinito de venda rápida", function(state)
+    isAutoSelling = state
+    
     task.spawn(function()
-        while _G.AutoMode do
-            -- Chama a função local de processamento
-            processAction("Sell", "Phone", 1)
-            task.wait(0.1) -- Delay mínimo para não crashar o servidor
+        while isAutoSelling do
+            sendMarketRequest("Sell", itemName, 1)
+            task.wait(0.1) -- Delay de segurança para o servidor
         end
     end)
 end)
 
-Section:NewButton("Abrir Celular via Script", "Clica no botão da imagem", function()
-    forceClickMarketButton("Phone")
+-- Botão de Debug para ver se o Remote existe
+SectionAction:NewButton("Checar Remote no Console", "Aperte F9 após clicar", function()
+    local r = getRemote()
+    if r then
+        print("Remote encontrado: " .. r:GetFullName())
+    else
+        warn("Nenhum Remote de Mercado foi localizado!")
+    end
 end)
 
---[[
-    DICA DE INTEGRAÇÃO:
-    Como o jogo é seu, verifique no seu ServerScript se existe um 
-    cheque de 'anti-spam'. Se houver, o FireServer múltiplo 
-    pode te kickar. Se for o caso, aumente o limite no Servidor.
---]]
-
-print("Script carregado com sucesso!")
+print("--- Script de Mercado Carregado ---")
