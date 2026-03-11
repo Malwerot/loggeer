@@ -1,93 +1,74 @@
 --[[
-    SCRIPT INTEGRADO - BRONX MARKET 2 (DEV EDITION)
-    Lógica: Funções Locais para Performance
-    Objetivo: Venda/Compra sem cooldown visual
+    SCRIPT DE TESTE DE ESTRESSE - BRONX MARKET 2
+    Objetivo: Disparar 2 vendas por clique para testar validação do servidor.
 --]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer = Players.LocalPlayer
 
--- Garante que o jogo carregou antes de iniciar a UI
+-- Aguarda o carregamento do jogo
 if not game:IsLoaded() then game.Loaded:Wait() end
 
--- 1. Carregamento da Library com tratamento de erro
+-- 1. Carregamento da Library
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Malwerot/test1/refs/heads/main/UUII.lua"))()
-
--- 2. Criação da Janela (Algumas libraries precisam de variáveis específicas)
-local Window = Library.CreateLib("Market Dev", "DarkTheme")
-
--- 3. Abas e Seções
-local TabMarket = Window:NewTab("Mercado")
-local SectionAction = TabMarket:NewSection("Ações Rápidas")
-
--- 4. Variáveis de Controle (Locais)
-local batchQuantity = 2
-local isAutoSelling = false
-local itemName = "Phone" -- Nome do item baseado na sua imagem
+local Window = Library.CreateLib("Market Debugger", "DarkTheme")
+local Tab = Window:NewTab("Testes")
+local Section = Tab:NewSection("Venda Dupla")
 
 --[[ 
-    FUNÇÕES LOCAIS (CORE)
+    FUNÇÕES LOCAIS (Lógica de Disparo)
 --]]
 
--- Localiza o Remote de forma segura
-local function getRemote()
-    -- Procure pelo nome exato do seu RemoteEvent no ReplicatedStorage
-    -- Exemplo: "SellItem", "MarketRemote", etc.
+-- Localiza o Remote que processa as vendas no seu jogo
+local function getMarketRemote()
+    -- Verifique no seu Explorer se o nome é exatamente esse:
     return ReplicatedStorage:FindFirstChild("RemoteEvent") or ReplicatedStorage:FindFirstChild("MarketEvent")
 end
 
--- Processa a ação múltipla (Onde ocorre a "duplicação" de envio)
-local function sendMarketRequest(action, name, amount)
-    local remote = getRemote()
+-- Função que executa a "Venda Dupla"
+local function dispararVendaDupla(itemName)
+    local remote = getMarketRemote()
+    
     if not remote then 
-        warn("Remote não encontrado! Verifique o nome no ReplicatedStorage.")
+        warn("ERRO: RemoteEvent não encontrado no ReplicatedStorage!")
         return 
     end
 
-    for i = 1, amount do
+    -- Dispara o evento 2 vezes instantaneamente
+    for i = 1, 2 do
         task.spawn(function()
-            -- O formato do FireServer depende de como você programou seu servidor
-            remote:FireServer(action, name)
+            -- O formato dos argumentos deve seguir o que o seu script de servidor espera
+            -- Exemplo comum: Remote:FireServer("Sell", "NomeDoItem")
+            remote:FireServer("Sell", itemName)
         end)
     end
+    
+    print("Solicitação de venda dupla enviada para: " .. itemName)
 end
 
 --[[ 
-    INTERAÇÃO COM A UI (LIBRARY)
+    INTERFACE (Botões)
 --]]
 
--- TextBox para definir a quantidade de uma vez
-SectionAction:NewTextBox("Qtd p/ Venda/Compra", "Ex: 2", function(txt)
-    local n = tonumber(txt)
-    if n then batchQuantity = n end
+-- Define qual item será usado no teste (Ex: Phone, Gun, etc)
+local itemAlvo = "Phone"
+Section:NewTextBox("Item para Teste", "Digite o nome do item", function(txt)
+    itemAlvo = txt
 end)
 
--- Botão para disparar a venda múltipla
-SectionAction:NewButton("Vender " .. itemName .. " (Multi)", "Vende " .. batchQuantity .. " de uma vez", function()
-    sendMarketRequest("Sell", itemName, batchQuantity)
+-- Botão que executa a ação de 2 vendas por clique
+Section:NewButton("Vender 2x de uma vez", "Testa se o servidor aceita 2 vendas simultâneas", function()
+    dispararVendaDupla(itemAlvo)
 end)
 
--- Toggle para o modo automático (Ignora cooldowns da UI visual)
-SectionAction:NewToggle("Auto-Venda (No Cooldown)", "Loop infinito de venda rápida", function(state)
-    isAutoSelling = state
-    
-    task.spawn(function()
-        while isAutoSelling do
-            sendMarketRequest("Sell", itemName, 1)
-            task.wait(0.1) -- Delay de segurança para o servidor
-        end
-    end)
-end)
-
--- Botão de Debug para ver se o Remote existe
-SectionAction:NewButton("Checar Remote no Console", "Aperte F9 após clicar", function()
-    local r = getRemote()
+Section:NewButton("Checar Remote (F9)", "Verifica o caminho do Remote no console", function()
+    local r = getMarketRemote()
     if r then
-        print("Remote encontrado: " .. r:GetFullName())
+        print("Caminho do Remote: " .. r:GetFullName())
     else
-        warn("Nenhum Remote de Mercado foi localizado!")
+        print("Nenhum Remote detectado.")
     end
 end)
 
-print("--- Script de Mercado Carregado ---")
+print("Script de Teste de Mercado carregado.")
