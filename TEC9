@@ -136,7 +136,7 @@ local function pressE()
 end
 
 -- ==========================================
--- Autofarm Otimizado
+-- Autofarm Otimizado e Blindado
 -- ==========================================
 
 local function stopAutoFarm()
@@ -162,6 +162,8 @@ local function startAutoFarm()
         return
     end
 
+    local missingTimer = 5 -- Inicia em 5 para mandar o alerta imediatamente se faltar algo
+
     farmConnection = RunService.Heartbeat:Connect(function(dt)
         farmTimer = farmTimer + dt
 
@@ -172,14 +174,30 @@ local function startAutoFarm()
                 equipPending = false
                 equipTimer = 0
                 farmTimer = 0
+                
+                -- MÁGICA: Só avança pro próximo ingrediente DEPOIS de interagir!
+                currentIndex = currentIndex % #farmItems + 1
             end
         elseif farmTimer >= (farmItems[currentIndex].cooldown + getRandomDelay(0.1, 0.4)) then
-            if equipItem(farmItems[currentIndex].name) then
+            local currentItemName = farmItems[currentIndex].name
+            
+            -- Tenta equipar o item
+            if equipItem(currentItemName) then
                 equipPending = true
                 equipTimer = 0
+                missingTimer = 5 -- Reseta o alerta de falta de item
+            else
+                -- SISTEMA DE AVISO: Se o item não está na mochila
+                missingTimer = missingTimer + dt
+                if missingTimer >= 5 then -- Manda a notificação a cada 5 segundos
+                    game.StarterGui:SetCore("SendNotification", {
+                        Title = "Estoque Vazio!",
+                        Text = "Vá comprar: " .. currentItemName,
+                        Duration = 3
+                    })
+                    missingTimer = 0
+                end
             end
-            currentIndex = currentIndex % #farmItems + 1
-            farmTimer = 0
         end
     end)
 end
