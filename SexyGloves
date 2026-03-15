@@ -113,18 +113,16 @@ AutoTab:CreateToggle({
 ----------------------------------------------------------------
 -- [ ABA: THEMES ]
 ----------------------------------------------------------------
-ThemesTab:CreateDropdown({
+Themes:CreateDropdown({
     Name = "Current Theme",
     Options = {"Default", "AmberGlow", "Amethyst", "Bloom", "DarkBlue", "Green", "Light", "Ocean", "Serenity"},
     CurrentOption = {"Default"},
     MultipleOptions = false,
     Flag = "CurrentTheme",
     Callback = function(Options)
-        -- Aqui estava Window.ModifyTheme, o correto é com dois pontos (:)
-        Window:ModifyTheme(Options)
+        Window.ModifyTheme(Options[1])
     end,
 })
-
 
 -- Keybind para fechar a UI
 ThemesTab:CreateKeybind({
