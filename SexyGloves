@@ -1,24 +1,21 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "Marshmallow Farm Hub",
-   LoadingTitle = "Carregando Interface...",
-   LoadingSubtitle = "Otimização Ativa",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "MarshFarmConfig",
-      FileName = "MainConfig"
-   },
-   KeySystem = false
-})
-
--- Serviços e Variáveis
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local farmTask = nil
-local targetPot = nil
-local isFarming = false
+
+-- Carregamento da Rayfield
+getgenv().uilibray = getgenv().uilibray or loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Rayfield = getgenv().uilibray
+
+----------------------------------------------------------------
+-- [ LÓGICA DO AUTOFARM (Sincronizada) ]
+----------------------------------------------------------------
+local farmConnection
+local currentIndex = 1
+local farmTimer = 0
+local equipPending = false
+local equipTimer = 0
+local EQUIP_DELAY = 0.3
 
 local farmItems = {
     {name = "Water", cooldown = 0.5},
@@ -27,50 +24,9 @@ local farmItems = {
     {name = "Empty Bag", cooldown = 47},
 }
 
--- ==========================================
--- Funções Core
--- ==========================================
-
-local function getRandomDelay(min, max)
-    return math.random(min * 100, max * 100) / 100
-end
-
-local function findNearestPot()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-    local myPos = character.HumanoidRootPart.Position
-    local closest = nil
-    local shortestDist = 35 
-
-    local locations = {
-        Workspace.Map.Houses:FindFirstChild("WH1") and Workspace.Map.Houses.WH1:FindFirstChild("Interior"),
-        Workspace.Map.Locations.Apartments:FindFirstChild("Home 1"),
-        Workspace.Map.Locations.Apartments:FindFirstChild("Home 2"),
-        Workspace.Map.Locations.Apartments:FindFirstChild("Home 3"),
-        Workspace.Map.Locations.Apartments:FindFirstChild("Home 4")
-    }
-
-    for _, loc in ipairs(locations) do
-        if loc then
-            for _, child in ipairs(loc:GetChildren()) do
-                if child.Name == "Cooking Pot" and child:IsA("BasePart") then
-                    local dist = (child.Position - myPos).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closest = child
-                    end
-                end
-            end
-        end
-    end
-    return closest
-end
-
 local function equipItem(itemName)
     local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("Humanoid") then return false end
-    if character:FindFirstChild(itemName) then return true end
-    
+    if not character then return false end
     local tool = LocalPlayer.Backpack:FindFirstChild(itemName)
     if tool then
         character.Humanoid:EquipTool(tool)
@@ -79,81 +35,109 @@ local function equipItem(itemName)
     return false
 end
 
--- ==========================================
--- Criação das Abas
--- ==========================================
-
-local MainTab = Window:CreateTab("Farm", 4483362458)
-local ConfigTab = Window:CreateTab("Configurações", 4483362458)
-
--- Seção de Farm
-MainTab:CreateToggle({
-   Name = "Auto Cooking Pot",
-   CurrentValue = false,
-   Flag = "FarmToggle",
-   Callback = function(Value)
-      isFarming = Value
-      if isFarming then
-         targetPot = findNearestPot()
-         if not targetPot then 
-            Rayfield:Notify({Title = "Erro", Content = "Panela não encontrada!", Duration = 5})
-            return 
-         end
-         
-         farmTask = task.spawn(function()
-            while isFarming do
-               for _, step in ipairs(farmItems) do
-                  if not isFarming then break end
-                  
-                  task.wait(step.cooldown + getRandomDelay(0.1, 0.3))
-                  
-                  while isFarming and not equipItem(step.name) do
-                     Rayfield:Notify({Title = "Aviso", Content = "Sem estoque de: " .. step.name, Duration = 2})
-                     task.wait(5)
-                  end
-                  
-                  if not isFarming then break end
-                  task.wait(0.4 + getRandomDelay(0.05, 0.1))
-                  
-                  if targetPot and targetPot.Parent then
-                     local att = targetPot:FindFirstChild("Attachment")
-                     local pp = att and att:FindFirstChild("ProximityPrompt")
-                     if pp then fireproximityprompt(pp) end
-                  end
-               end
+local function pressE()
+    pcall(function()
+        -- Procura a panela mais próxima nos locais definidos
+        local locations = {
+            Workspace.Map.Houses.WH1:FindFirstChild("Interior"),
+            Workspace.Map.Locations.Apartments:FindFirstChild("Home 1"),
+            Workspace.Map.Locations.Apartments:FindFirstChild("Home 2"),
+            Workspace.Map.Locations.Apartments:FindFirstChild("Home 3"),
+            Workspace.Map.Locations.Apartments:FindFirstChild("Home 4")
+        }
+        for _, loc in ipairs(locations) do
+            if loc then
+                for _, child in ipairs(loc:GetChildren()) do
+                    if child.Name == "Cooking Pot" then
+                        local att = child:FindFirstChild("Attachment")
+                        local pp = att and att:FindFirstChild("ProximityPrompt")
+                        if pp then fireproximityprompt(pp) end
+                    end
+                end
             end
-         end)
-      else
-         if farmTask then task.cancel(farmTask) end
-      end
-   end,
+        end
+    end)
+end
+
+local function startAutoFarm()
+    if farmConnection then farmConnection:Disconnect() end
+    farmConnection = RunService.Heartbeat:Connect(function(dt)
+        farmTimer = farmTimer + dt
+        if equipPending then
+            equipTimer = equipTimer + dt
+            if equipTimer >= EQUIP_DELAY then
+                pressE()
+                equipPending = false
+                equipTimer = 0
+                farmTimer = 0
+            end
+        elseif farmTimer >= farmItems[currentIndex].cooldown then
+            if equipItem(farmItems[currentIndex].name) then
+                equipPending = true
+                equipTimer = 0
+            end
+            currentIndex = currentIndex % #farmItems + 1
+            farmTimer = 0
+        end
+    end)
+end
+
+----------------------------------------------------------------
+-- [ JANELA PRINCIPAL ]
+----------------------------------------------------------------
+local Window = Rayfield:CreateWindow({
+    Name = "AXIOS | BH4L",
+    LoadingTitle = "AXIOS",
+    LoadingSubtitle = "Iniciando no modo Clean...",
+    Theme = "Default", -- Define para iniciar no Default como você pediu
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "LimbConfigs",
+        FileName = "Config"
+    },
 })
 
--- Seção de Temas (Correção do ModifyTheme)
-ConfigTab:CreateSection("Personalização da UI")
+local AutoTab = Window:CreateTab("AutoFarm", "badge-dollar-sign")
+local ThemesTab = Window:CreateTab("Themes", "palette")
 
-ConfigTab:CreateDropdown({
-   Name = "Trocar Tema da UI",
-   Options = {"Default", "Ocean", "AmberGlow", "Light", "Amethyst", "Green", "Bloom", "DarkBlue", "Serenity"},
-   CurrentOption = {"Default"},
-   MultipleOptions = false,
-   Flag = "ThemeDropdown",
-   Callback = function(Option)
-      -- Usando o método correto que você lembrou!
-      Window:ModifyTheme(Option[1])
-   end,
+-- Toggle do Farm
+AutoTab:CreateToggle({
+    Name = "Auto Cooking Pot",
+    CurrentValue = false,
+    Flag = "FarmToggle",
+    Callback = function(Value)
+        if Value then startAutoFarm() else if farmConnection then farmConnection:Disconnect() end end
+    end,
 })
 
--- Seção de Atalhos (Correção da Keybind)
-ConfigTab:CreateSection("Atalhos")
+----------------------------------------------------------------
+-- [ ABA THEMES - ONDE ESTAVA O ERRO ]
+----------------------------------------------------------------
+ThemesTab:CreateDropdown({
+    Name = "Current Theme",
+    Options = {"Default", "AmberGlow", "Amethyst", "Bloom", "DarkBlue", "Green", "Light", "Ocean", "Serenity"},
+    CurrentOption = {"Default"},
+    MultipleOptions = false,
+    Flag = "ThemeSelector",
+    Callback = function(Option)
+        -- O SEGREDO ESTÁ AQUI:
+        -- O dropdown da Rayfield retorna uma TABELA: {"Default"}
+        -- O ModifyTheme precisa de uma STRING: "Default"
+        local themeName = Option[1] 
+        
+        pcall(function()
+            Window:ModifyTheme(themeName)
+        end)
+    end,
+})
 
-ConfigTab:CreateKeybind({
-   Name = "Esconder/Mostrar Menu",
+-- Keybind para fechar a UI
+ThemesTab:CreateKeybind({
+   Name = "Esconder Menu",
    CurrentKeybind = "RightShift",
    HoldToInteract = false,
    Flag = "UIKeybind",
-   Callback = function(Keybind)
-      -- Método oficial da Rayfield para alternar visibilidade
+   Callback = function()
       Rayfield:ToggleUI()
    end,
 })
