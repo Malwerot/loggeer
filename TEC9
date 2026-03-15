@@ -1,4 +1,4 @@
--- Kavo UI Library Init (Tema Blood para combinar com o pedido)
+-- Kavo UI Library Init
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Window = Library.CreateLib("Marshmallow Farm Hub", "BloodTheme")
 
@@ -9,12 +9,13 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 local farmConnection
-local targetPot = nil -- Aqui fica a panela "alocada"
+local targetPot = nil 
 local currentIndex = 1
 local farmTimer = 0
 local equipPending = false
 local equipTimer = 0
 local EQUIP_DELAY = 0.3
+local isPressing = false -- Trava de segurança (Debounce)
 
 local farmItems = {
     {name = "Water", cooldown = 0.5},
@@ -41,10 +42,12 @@ local function calcularVendaTotal()
     local containers = {LocalPlayer.Backpack, LocalPlayer.Character}
     
     for _, folder in ipairs(containers) do
-        for _, item in ipairs(folder:GetChildren()) do
-            if PRECOS_BAGS[item.Name] then
-                totalDinheiro = totalDinheiro + PRECOS_BAGS[item.Name]
-                quantidadeTotal = quantidadeTotal + 1
+        if folder then
+            for _, item in ipairs(folder:GetChildren()) do
+                if PRECOS_BAGS[item.Name] then
+                    totalDinheiro = totalDinheiro + PRECOS_BAGS[item.Name]
+                    quantidadeTotal = quantidadeTotal + 1
+                end
             end
         end
     end
@@ -60,16 +63,14 @@ local function getRandomDelay(min, max)
     return math.random(min * 100, max * 100) / 100
 end
 
--- Busca a panela mais próxima UMA ÚNICA VEZ ao ligar o farm
 local function findNearestPot()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
     
     local myPos = character.HumanoidRootPart.Position
     local closest = nil
-    local shortestDist = 30 -- Raio máximo de detecção (30 studs)
+    local shortestDist = 30 
 
-    -- Locais para varredura inicial
     local locations = {
         Workspace.Map.Houses:FindFirstChild("WH1") and Workspace.Map.Houses.WH1:FindFirstChild("Interior"),
         Workspace.Map.Locations.Apartments:FindFirstChild("Home 1"),
@@ -91,7 +92,6 @@ local function findNearestPot()
             end
         end
     end
-    
     return closest
 end
 
@@ -101,10 +101,12 @@ local function countItems(itemName)
     local character = LocalPlayer.Character
     local items = backpack:GetChildren()
     if character then
-        for _, v in ipairs(character:GetChildren()) do table.insert(items, v) end
+        for _, v in ipairs(character:GetChildren()) do 
+            if v:IsA("Tool") then table.insert(items, v) end 
+        end
     end
     for _, item in ipairs(items) do
-        if item:IsA("Tool") and item.Name == itemName then count = count + 1 end
+        if item.Name == itemName then count = count + 1 end
     end
     return count
 end
@@ -119,40 +121,42 @@ local function equipItem(itemName)
     return false
 end
 
--- Interage EXCLUSIVAMENTE com a panela que foi alocada no início
+-- FIX: Interação Seca (Evita o clique duplo lento)
 local function pressE()
-    if targetPot and targetPot.Parent then
+    if targetPot and targetPot.Parent and not isPressing then
+        isPressing = true
         local att = targetPot:FindFirstChild("Attachment")
         local pp = att and att:FindFirstChild("ProximityPrompt")
         if pp then 
             fireproximityprompt(pp) 
         end
+        task.wait(0.2) -- Respiro necessário para o jogo registrar
+        isPressing = false
     end
 end
 
 -- ==========================================
--- Autofarm Otimizado (Focado)
+-- Autofarm Otimizado
 -- ==========================================
 
 local function stopAutoFarm()
     if farmConnection then farmConnection:Disconnect() end
     farmConnection = nil
-    targetPot = nil -- Limpa a alocação para permitir nova busca depois
+    targetPot = nil
     equipPending = false
+    isPressing = false
     farmTimer = 0
     currentIndex = 1
 end
 
 local function startAutoFarm()
     stopAutoFarm() 
-    
-    -- TRAVA NA PANELA: Faz a busca no momento que você clica no botão
     targetPot = findNearestPot()
     
     if not targetPot then
         game.StarterGui:SetCore("SendNotification", {
-            Title = "Aviso de Proximidade",
-            Text = "Chegue perto de uma panela antes de ativar!",
+            Title = "Erro de Proximidade",
+            Text = "Fique ao lado da panela!",
             Duration = 5
         })
         return
@@ -163,14 +167,13 @@ local function startAutoFarm()
 
         if equipPending then
             equipTimer = equipTimer + dt
-            -- Delay humano variável antes de interagir
-            if equipTimer >= (EQUIP_DELAY + getRandomDelay(0.05, 0.2)) then
-                pressE() -- Só interage com a panela alvo
+            if equipTimer >= (EQUIP_DELAY + getRandomDelay(0.05, 0.1)) then
+                pressE() 
                 equipPending = false
                 equipTimer = 0
                 farmTimer = 0
             end
-        elseif farmTimer >= (farmItems[currentIndex].cooldown + getRandomDelay(0.1, 0.5)) then
+        elseif farmTimer >= (farmItems[currentIndex].cooldown + getRandomDelay(0.1, 0.4)) then
             if equipItem(farmItems[currentIndex].name) then
                 equipPending = true
                 equipTimer = 0
@@ -185,45 +188,44 @@ end
 -- Construção da Interface
 -- ==========================================
 
-local Tab = Window:NewTab("Serviços")
+local Tab = Window:NewTab("Farm")
 local FarmSection = Tab:NewSection("Farm Silencioso")
 
-FarmSection:NewToggle("Auto Cooking Pot", "Aloca a panela próxima e inicia o farm", function(state)
+FarmSection:NewToggle("Auto Cooking Pot", "Trava na panela próxima", function(state)
     if state then startAutoFarm() else stopAutoFarm() end
 end)
 
 local NPCSection = Tab:NewSection("Interações")
-NPCSection:NewButton("Falar com Lamont Bell", "Interação segura com NPC", function()
+NPCSection:NewButton("Falar com Lamont Bell", "NPC de Vendas", function()
     pcall(function()
         local npc = Workspace.Folders.NPCs:FindFirstChild("Lamont Bell")
-        if npc then
-            fireproximityprompt(npc.UpperTorso.ProximityPrompt)
-        end
+        if npc then fireproximityprompt(npc.UpperTorso.ProximityPrompt) end
     end)
 end)
 
 local InfoSection = Tab:NewSection("Inventário")
-InfoSection:NewButton("Calcular Marshmallows", "Verifica estoque atual", function()
+
+-- Botão de Estoque (Ingredientes)
+InfoSection:NewButton("Calcular Marshmallows", "Ver estoque de produção", function()
     local p = math.min(countItems("Sugar Block Bag"), countItems("Water"), countItems("Gelatin"))
     game.StarterGui:SetCore("SendNotification", {
-        Title = "Estoque", 
-        Text = "Você pode fazer: " .. p .. " Marshmallows", 
+        Title = "Capacidade de Produção", 
+        Text = "Você pode fazer: " .. p .. " un.", 
         Duration = 5
     })
 end)
 
--- NOVO BOTÃO: Cálculo Financeiro
-InfoSection:NewButton("Calcular Valor de Venda", "Soma o valor das Bags na mochila", function()
+-- Botão Financeiro (Produtos Prontos)
+InfoSection:NewButton("Calcular Valor de Venda", "Total de dinheiro na mochila", function()
     local grana, total = calcularVendaTotal()
-    
     game.StarterGui:SetCore("SendNotification", {
-        Title = "Balanço de Vendas",
+        Title = "Valor do Farm na Mochila",
         Text = "Total: $" .. grana .. " (" .. total .. " bags)",
         Duration = 7
     })
 end)
 
 local ConfigSection = Window:NewTab("Config"):NewSection("Ajustes UI")
-ConfigSection:NewKeybind("Esconder/Mostrar UI", "Tecla para alternar o menu", Enum.KeyCode.RightShift, function()
+ConfigSection:NewKeybind("Esconder/Mostrar UI", "Shift Direito alterna menu", Enum.KeyCode.RightShift, function()
     Library:ToggleUI()
 end)
