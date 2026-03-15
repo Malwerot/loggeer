@@ -113,7 +113,7 @@ AutoTab:CreateToggle({
 ----------------------------------------------------------------
 -- [ ABA: THEMES ]
 ----------------------------------------------------------------
-Themes:CreateDropdown({
+ThemesTab:CreateDropdown({
     Name = "Current Theme",
     Options = {"Default", "AmberGlow", "Amethyst", "Bloom", "DarkBlue", "Green", "Light", "Ocean", "Serenity"},
     CurrentOption = {"Default"},
