@@ -14,8 +14,8 @@ local currentIndex = 1
 local farmTimer = 0
 local equipPending = false
 local equipTimer = 0
-local EQUIP_DELAY = 0.3
-local isPressing = false -- Trava de segurança (Debounce)
+local EQUIP_DELAY = 0.4 -- Aumentado levemente para estabilidade
+local isPressing = false
 
 local farmItems = {
     {name = "Water", cooldown = 0.5},
@@ -37,10 +37,7 @@ local PRECOS_BAGS = {
 local function calcularVendaTotal()
     local totalDinheiro = 0
     local quantidadeTotal = 0
-    
-    -- Verifica mochila e o que está na mão (Character)
     local containers = {LocalPlayer.Backpack, LocalPlayer.Character}
-    
     for _, folder in ipairs(containers) do
         if folder then
             for _, item in ipairs(folder:GetChildren()) do
@@ -51,12 +48,11 @@ local function calcularVendaTotal()
             end
         end
     end
-    
     return totalDinheiro, quantidadeTotal
 end
 
 -- ==========================================
--- Funções de Inteligência e Busca
+-- Funções de Inteligência
 -- ==========================================
 
 local function getRandomDelay(min, max)
@@ -66,11 +62,9 @@ end
 local function findNearestPot()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-    
     local myPos = character.HumanoidRootPart.Position
     local closest = nil
     local shortestDist = 30 
-
     local locations = {
         Workspace.Map.Houses:FindFirstChild("WH1") and Workspace.Map.Houses.WH1:FindFirstChild("Interior"),
         Workspace.Map.Locations.Apartments:FindFirstChild("Home 1"),
@@ -78,7 +72,6 @@ local function findNearestPot()
         Workspace.Map.Locations.Apartments:FindFirstChild("Home 3"),
         Workspace.Map.Locations.Apartments:FindFirstChild("Home 4")
     }
-
     for _, loc in ipairs(locations) do
         if loc then
             for _, child in ipairs(loc:GetChildren()) do
@@ -95,22 +88,6 @@ local function findNearestPot()
     return closest
 end
 
-local function countItems(itemName)
-    local count = 0
-    local backpack = LocalPlayer.Backpack
-    local character = LocalPlayer.Character
-    local items = backpack:GetChildren()
-    if character then
-        for _, v in ipairs(character:GetChildren()) do 
-            if v:IsA("Tool") then table.insert(items, v) end 
-        end
-    end
-    for _, item in ipairs(items) do
-        if item.Name == itemName then count = count + 1 end
-    end
-    return count
-end
-
 local function equipItem(itemName)
     local character = LocalPlayer.Character
     local tool = LocalPlayer.Backpack:FindFirstChild(itemName)
@@ -121,22 +98,21 @@ local function equipItem(itemName)
     return false
 end
 
--- FIX: Interação Seca (Evita o clique duplo lento)
 local function pressE()
-    if targetPot and targetPot.Parent and not isPressing then
+    if targetPot and not isPressing then
         isPressing = true
         local att = targetPot:FindFirstChild("Attachment")
         local pp = att and att:FindFirstChild("ProximityPrompt")
         if pp then 
             fireproximityprompt(pp) 
         end
-        task.wait(0.2) -- Respiro necessário para o jogo registrar
+        task.wait(0.3)
         isPressing = false
     end
 end
 
 -- ==========================================
--- Autofarm Otimizado e Blindado
+-- Autofarm Estabilizado
 -- ==========================================
 
 local function stopAutoFarm()
@@ -144,7 +120,6 @@ local function stopAutoFarm()
     farmConnection = nil
     targetPot = nil
     equipPending = false
-    isPressing = false
     farmTimer = 0
     currentIndex = 1
 end
@@ -154,75 +129,58 @@ local function startAutoFarm()
     targetPot = findNearestPot()
     
     if not targetPot then
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "Erro de Proximidade",
-            Text = "Fique ao lado da panela!",
-            Duration = 5
-        })
+        game.StarterGui:SetCore("SendNotification", {Title = "Erro", Text = "Fique perto da panela!", Duration = 5})
         return
     end
 
-    local missingTimer = 5 -- Inicia em 5 para mandar o alerta imediatamente se faltar algo
+    local missingTimer = 0
 
     farmConnection = RunService.Heartbeat:Connect(function(dt)
-        farmTimer = farmTimer + dt
-
-        if equipPending then
+        -- Se não estiver esperando o delay de equipar, conta o tempo do cooldown do item atual
+        if not equipPending then
+            farmTimer = farmTimer + dt
+            
+            -- Só tenta equipar se o tempo do item atual (ex: 22s do açucar) passou
+            if farmTimer >= (farmItems[currentIndex].cooldown + getRandomDelay(0.1, 0.4)) then
+                if equipItem(farmItems[currentIndex].name) then
+                    equipPending = true
+                    equipTimer = 0
+                else
+                    -- Alerta se faltar item
+                    missingTimer = missingTimer + dt
+                    if missingTimer >= 5 then
+                        game.StarterGui:SetCore("SendNotification", {Title = "Estoque!", Text = "Faltando: "..farmItems[currentIndex].name, Duration = 3})
+                        missingTimer = 0
+                    end
+                end
+            end
+        else
+            -- Se já equipou, conta o tempinho para apertar o E
             equipTimer = equipTimer + dt
             if equipTimer >= (EQUIP_DELAY + getRandomDelay(0.05, 0.1)) then
-                pressE() 
+                pressE()
+                -- AGORA SIM: Reseta tudo e vai para o próximo item
+                currentIndex = currentIndex % #farmItems + 1
+                farmTimer = 0
                 equipPending = false
                 equipTimer = 0
-                farmTimer = 0
-                
-                -- MÁGICA: Só avança pro próximo ingrediente DEPOIS de interagir!
-                currentIndex = currentIndex % #farmItems + 1
-            end
-        elseif farmTimer >= (farmItems[currentIndex].cooldown + getRandomDelay(0.1, 0.4)) then
-            local currentItemName = farmItems[currentIndex].name
-            
-            -- Tenta equipar o item
-            if equipItem(currentItemName) then
-                equipPending = true
-                equipTimer = 0
-                missingTimer = 5 -- Reseta o alerta de falta de item
-            else
-                -- SISTEMA DE AVISO: Se o item não está na mochila
-                missingTimer = missingTimer + dt
-                if missingTimer >= 5 then -- Manda a notificação a cada 5 segundos
-                    game.StarterGui:SetCore("SendNotification", {
-                        Title = "Estoque Vazio!",
-                        Text = "Vá comprar: " .. currentItemName,
-                        Duration = 3
-                    })
-                    missingTimer = 0
-                end
             end
         end
     end)
 end
 
 -- ==========================================
--- Construção da Interface
+-- Interface
 -- ==========================================
 
 local Tab = Window:NewTab("Farm")
-local FarmSection = Tab:NewSection("Farm Silencioso")
+local FarmSection = Tab:NewSection("Controle")
 
-FarmSection:NewToggle("Auto Cooking Pot", "Trava na panela próxima", function(state)
+FarmSection:NewToggle("Auto Cooking Pot", "Farm em ordem", function(state)
     if state then startAutoFarm() else stopAutoFarm() end
 end)
 
-local NPCSection = Tab:NewSection("Interações")
-NPCSection:NewButton("Falar com Lamont Bell", "NPC de Vendas", function()
-    pcall(function()
-        local npc = Workspace.Folders.NPCs:FindFirstChild("Lamont Bell")
-        if npc then fireproximityprompt(npc.UpperTorso.ProximityPrompt) end
-    end)
-end)
-
 local InfoSection = Tab:NewSection("Inventário")
-
 -- Botão de Estoque (Ingredientes)
 InfoSection:NewButton("Calcular Marshmallows", "Ver estoque de produção", function()
     local p = math.min(countItems("Sugar Block Bag"), countItems("Water"), countItems("Gelatin"))
@@ -233,17 +191,12 @@ InfoSection:NewButton("Calcular Marshmallows", "Ver estoque de produção", func
     })
 end)
 
--- Botão Financeiro (Produtos Prontos)
-InfoSection:NewButton("Calcular Valor de Venda", "Total de dinheiro na mochila", function()
+InfoSection:NewButton("Calcular Valor de Venda", "Soma lucro na mochila", function()
     local grana, total = calcularVendaTotal()
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "Valor do Farm na Mochila",
-        Text = "Total: $" .. grana .. " (" .. total .. " bags)",
-        Duration = 7
-    })
+    game.StarterGui:SetCore("SendNotification", {Title = "Valor", Text = "Total: $" .. grana .. " (" .. total .. " bags)", Duration = 7})
 end)
 
-local ConfigSection = Window:NewTab("Config"):NewSection("Ajustes UI")
-ConfigSection:NewKeybind("Esconder/Mostrar UI", "Shift Direito alterna menu", Enum.KeyCode.RightShift, function()
+local ConfigSection = Window:NewTab("Config"):NewSection("Ajustes")
+ConfigSection:NewKeybind("Esconder UI", "Shift Direito", Enum.KeyCode.RightShift, function()
     Library:ToggleUI()
 end)
