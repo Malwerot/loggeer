@@ -113,21 +113,18 @@ AutoTab:CreateToggle({
 ----------------------------------------------------------------
 -- [ ABA THEMES - ONDE ESTAVA O ERRO ]
 ----------------------------------------------------------------
-ThemesTab:CreateDropdown({
+Themes:CreateDropdown({
     Name = "Current Theme",
     Options = {"Default", "AmberGlow", "Amethyst", "Bloom", "DarkBlue", "Green", "Light", "Ocean", "Serenity"},
     CurrentOption = {"Default"},
     MultipleOptions = false,
-    Flag = "ThemeSelector",
-    Callback = function(Option)
-        -- O SEGREDO ESTÁ AQUI:
-        -- O dropdown da Rayfield retorna uma TABELA: {"Default"}
-        -- O ModifyTheme precisa de uma STRING: "Default"
-        local themeName = Option[1] 
+    Flag = "CurrentTheme",
+    Callback = function(Options)
+        -- O SEGREDO: Pegar o primeiro item da tabela [1]
+        local themeSelecionado = Options[1] 
         
-        pcall(function()
-            Window:ModifyTheme(themeName)
-        end)
+        -- Agora sim, passa como STRING para o ModifyTheme
+        Window:ModifyTheme(themeSelecionado)
     end,
 })
 
