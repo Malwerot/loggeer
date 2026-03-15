@@ -14,6 +14,7 @@ local farmTimer = 0
 local equipPending = false
 local equipTimer = 0
 local EQUIP_DELAY = 0.3
+local currentDynamicDelay = 0.5 -- Variável para guardar o delay aleatório atual
 
 local farmItems = {
     {name = "Water", cooldown = 0.5},
@@ -22,7 +23,15 @@ local farmItems = {
     {name = "Empty Bag", cooldown = 47},
 }
 
--- Funções utilitárias
+-- ==========================================
+-- Funções utilitárias e de Segurança
+-- ==========================================
+
+-- Função para gerar tempos aleatórios e simular comportamento humano
+local function getRandomDelay(min, max)
+    return math.random(min * 100, max * 100) / 100
+end
+
 local function getInventory()
     local allItems = {}
     local backpack = LocalPlayer.Backpack
@@ -96,25 +105,33 @@ local function pressE()
     end)
 end
 
--- Autofarm
+-- ==========================================
+-- Autofarm (Comportamento Humano)
+-- ==========================================
 local function startAutoFarm()
     if farmConnection then farmConnection:Disconnect() end
     farmTimer = 0
     equipPending = false
     currentIndex = 1
+    currentDynamicDelay = getRandomDelay(0.4, 0.9)
 
     farmConnection = RunService.Heartbeat:Connect(function(dt)
         farmTimer = farmTimer + dt
 
         if equipPending then
             equipTimer = equipTimer + dt
-            if equipTimer >= EQUIP_DELAY then
+            -- Usa o EQUIP_DELAY base + um valor aleatório para simular tempo de reação
+            if equipTimer >= (EQUIP_DELAY + getRandomDelay(0.05, 0.25)) then
                 pressE()
                 equipPending = false
                 equipTimer = 0
                 farmTimer = 0
+                -- Gera um novo delay aleatório para o próximo ciclo
+                currentDynamicDelay = getRandomDelay(0.5, 1.2) 
             end
-        elseif farmTimer >= farmItems[currentIndex].cooldown then
+            
+        -- Verifica o cooldown do item + um delay extra aleatório para não ser instantâneo
+        elseif farmTimer >= (farmItems[currentIndex].cooldown + getRandomDelay(0.1, 0.6)) then
             local success = equipItem(farmItems[currentIndex].name)
             if success then
                 equipPending = true
@@ -122,8 +139,8 @@ local function startAutoFarm()
                 currentIndex = currentIndex % #farmItems + 1
             else
                 currentIndex = currentIndex % #farmItems + 1
+                farmTimer = 0
             end
-            farmTimer = 0
         end
     end)
 end
@@ -139,7 +156,7 @@ local function stopAutoFarm()
     currentIndex = 1
 end
 
--- Interagir com Lamont Bell instantaneamente
+-- Interagir com Lamont Bell (Mais Seguro)
 local function pressLamontBell()
     pcall(function()
         local npc = Workspace.Folders.NPCs:FindFirstChild("Lamont Bell")
@@ -148,7 +165,8 @@ local function pressLamontBell()
             if upperTorso then
                 local pp = upperTorso:FindFirstChild("ProximityPrompt")
                 if pp then
-                    pp.HoldDuration = 0
+                    -- Removido o HoldDuration = 0 para evitar flags de Anti-Cheat.
+                    -- Dispara o prompt normalmente, como um jogador faria.
                     fireproximityprompt(pp)
                 end
             end
@@ -184,7 +202,7 @@ end)
 -- Seção NPCs
 local NPCSection = Tab:NewSection("Interações (NPC)")
 
-NPCSection:NewButton("Falar com Lamont Bell", "Interage instantaneamente com o Lamont", function()
+NPCSection:NewButton("Falar com Lamont Bell", "Interage com o Lamont com segurança", function()
     pressLamontBell()
 end)
 
@@ -202,9 +220,9 @@ InfoSection:NewButton("Checar Possíveis Marshmallows", "Verifica os ingrediente
     })
 end)
 
--- Botão extra para esconder a UI (padrão do Kavo é o RightShift, mas é bom ter na tela)
+-- Botão extra para esconder a UI
 local ConfigTab = Window:NewTab("Config")
 local ConfigSection = ConfigTab:NewSection("UI Settings")
 ConfigSection:NewKeybind("Esconder/Mostrar UI", "Aperte a tecla para alternar a UI", Enum.KeyCode.RightShift, function()
-	Library:ToggleUI()
+    Library:ToggleUI()
 end)
