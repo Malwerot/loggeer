@@ -24,6 +24,35 @@ local farmItems = {
 }
 
 -- ==========================================
+-- Sistema de Balanço Financeiro
+-- ==========================================
+
+local PRECOS_BAGS = {
+    ["Small Marshmallow Bag"] = 1470,
+    ["Medium Marshmallow Bag"] = 2840,
+    ["Large Marshmallow Bag"] = 4250
+}
+
+local function calcularVendaTotal()
+    local totalDinheiro = 0
+    local quantidadeTotal = 0
+    
+    -- Verifica mochila e o que está na mão (Character)
+    local containers = {LocalPlayer.Backpack, LocalPlayer.Character}
+    
+    for _, folder in ipairs(containers) do
+        for _, item in ipairs(folder:GetChildren()) do
+            if PRECOS_BAGS[item.Name] then
+                totalDinheiro = totalDinheiro + PRECOS_BAGS[item.Name]
+                quantidadeTotal = quantidadeTotal + 1
+            end
+        end
+    end
+    
+    return totalDinheiro, quantidadeTotal
+end
+
+-- ==========================================
 -- Funções de Inteligência e Busca
 -- ==========================================
 
@@ -180,6 +209,17 @@ InfoSection:NewButton("Calcular Marshmallows", "Verifica estoque atual", functio
         Title = "Estoque", 
         Text = "Você pode fazer: " .. p .. " Marshmallows", 
         Duration = 5
+    })
+end)
+
+-- NOVO BOTÃO: Cálculo Financeiro
+InfoSection:NewButton("Calcular Valor de Venda", "Soma o valor das Bags na mochila", function()
+    local grana, total = calcularVendaTotal()
+    
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Balanço de Vendas",
+        Text = "Total: $" .. grana .. " (" .. total .. " bags)",
+        Duration = 7
     })
 end)
 
