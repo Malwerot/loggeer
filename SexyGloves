@@ -1,1 +1,228 @@
+-- Kavo UI Library Init
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("Marshmallow Farm Hub", "BloodTheme")
 
+-- Serviços e Variáveis
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+local farmTask = nil -- Substituímos a Connection por uma Task
+local targetPot = nil 
+local isFarming = false
+
+local farmItems = {
+    {name = "Water", cooldown = 0.5},
+    {name = "Sugar Block Bag", cooldown = 22},
+    {name = "Gelatin", cooldown = 2.8},
+    {name = "Empty Bag", cooldown = 47},
+}
+
+-- ==========================================
+-- Sistema de Balanço Financeiro
+-- ==========================================
+
+local PRECOS_BAGS = {
+    ["Small Marshmallow Bag"] = 1470,
+    ["Medium Marshmallow Bag"] = 2840,
+    ["Large Marshmallow Bag"] = 4250
+}
+
+local function calcularVendaTotal()
+    local totalDinheiro = 0
+    local quantidadeTotal = 0
+    local containers = {LocalPlayer.Backpack, LocalPlayer.Character}
+    
+    for _, folder in ipairs(containers) do
+        if folder then
+            for _, item in ipairs(folder:GetChildren()) do
+                if PRECOS_BAGS[item.Name] then
+                    totalDinheiro = totalDinheiro + PRECOS_BAGS[item.Name]
+                    quantidadeTotal = quantidadeTotal + 1
+                end
+            end
+        end
+    end
+    return totalDinheiro, quantidadeTotal
+end
+
+-- ==========================================
+-- Funções de Inteligência
+-- ==========================================
+
+local function getRandomDelay(min, max)
+    return math.random(min * 100, max * 100) / 100
+end
+
+local function findNearestPot()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+    local myPos = character.HumanoidRootPart.Position
+    local closest = nil
+    local shortestDist = 30 
+
+    local locations = {
+        Workspace.Map.Houses:FindFirstChild("WH1") and Workspace.Map.Houses.WH1:FindFirstChild("Interior"),
+        Workspace.Map.Locations.Apartments:FindFirstChild("Home 1"),
+        Workspace.Map.Locations.Apartments:FindFirstChild("Home 2"),
+        Workspace.Map.Locations.Apartments:FindFirstChild("Home 3"),
+        Workspace.Map.Locations.Apartments:FindFirstChild("Home 4")
+    }
+
+    for _, loc in ipairs(locations) do
+        if loc then
+            for _, child in ipairs(loc:GetChildren()) do
+                if child.Name == "Cooking Pot" and child:IsA("BasePart") then
+                    local dist = (child.Position - myPos).Magnitude
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closest = child
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function countItems(itemName)
+    local count = 0
+    local backpack = LocalPlayer.Backpack
+    local character = LocalPlayer.Character
+    local items = backpack:GetChildren()
+    if character then
+        for _, v in ipairs(character:GetChildren()) do 
+            if v:IsA("Tool") then table.insert(items, v) end 
+        end
+    end
+    for _, item in ipairs(items) do
+        if item.Name == itemName then count = count + 1 end
+    end
+    return count
+end
+
+local function equipItem(itemName)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("Humanoid") then return false end
+    
+    -- Se o item já estiver na mão, perfeito
+    local inHand = character:FindFirstChild(itemName)
+    if inHand and inHand:IsA("Tool") then return true end
+    
+    -- Se não estiver na mão, procura na mochila e equipa
+    local tool = LocalPlayer.Backpack:FindFirstChild(itemName)
+    if tool then
+        character.Humanoid:EquipTool(tool)
+        return true
+    end
+    
+    return false
+end
+
+local function pressE()
+    if targetPot and targetPot.Parent then
+        local att = targetPot:FindFirstChild("Attachment")
+        local pp = att and att:FindFirstChild("ProximityPrompt")
+        if pp then 
+            fireproximityprompt(pp) 
+        end
+    end
+end
+
+-- ==========================================
+-- Autofarm Sequencial (Perfeito para Receitas)
+-- ==========================================
+
+local function stopAutoFarm()
+    isFarming = false
+    if farmTask then
+        task.cancel(farmTask) -- Cancela o loop imediatamente
+        farmTask = nil
+    end
+    targetPot = nil
+end
+
+local function startAutoFarm()
+    stopAutoFarm() 
+    targetPot = findNearestPot()
+    
+    if not targetPot then
+        game.StarterGui:SetCore("SendNotification", {Title = "Erro", Text = "Fique perto da panela!", Duration = 5})
+        return
+    end
+
+    isFarming = true
+    
+    -- Inicia uma "linha do tempo" independente
+    farmTask = task.spawn(function()
+        while isFarming do
+            for _, step in ipairs(farmItems) do
+                if not isFarming then break end -- Trava de segurança para desligar
+                
+                -- 1. Espera o tempo de cozimento do ingrediente anterior
+                local waitTime = step.cooldown + getRandomDelay(0.1, 0.4)
+                task.wait(waitTime)
+                
+                if not isFarming then break end
+
+                -- 2. Tenta equipar o ingrediente (se faltar, ele pausa e avisa)
+                local equipped = false
+                while not equipped and isFarming do
+                    equipped = equipItem(step.name)
+                    if not equipped then
+                        game.StarterGui:SetCore("SendNotification", {
+                            Title = "Estoque Vazio!", 
+                            Text = "Compre: " .. step.name, 
+                            Duration = 3
+                        })
+                        task.wait(4) -- Espera você comprar antes de tentar de novo
+                    end
+                end
+                
+                if not isFarming then break end
+
+                -- 3. Dá um tempinho para a animação do boneco levantar a mão
+                task.wait(0.4 + getRandomDelay(0.05, 0.15))
+                
+                -- 4. Coloca na panela!
+                pressE()
+            end
+        end
+    end)
+end
+
+-- ==========================================
+-- Construção da Interface
+-- ==========================================
+
+local Tab = Window:NewTab("Farm")
+local FarmSection = Tab:NewSection("Controle")
+
+FarmSection:NewToggle("Auto Cooking Pot", "Farm em ordem correta", function(state)
+    if state then startAutoFarm() else stopAutoFarm() end
+end)
+
+local NPCSection = Tab:NewSection("Interações")
+NPCSection:NewButton("Falar com Lamont Bell", "NPC de Vendas", function()
+    pcall(function()
+        local npc = Workspace.Folders.NPCs:FindFirstChild("Lamont Bell")
+        if npc then fireproximityprompt(npc.UpperTorso.ProximityPrompt) end
+    end)
+end)
+
+local InfoSection = Tab:NewSection("Inventário")
+
+InfoSection:NewButton("Calcular Marshmallows", "Ver estoque de produção", function()
+    local p = math.min(countItems("Sugar Block Bag"), countItems("Water"), countItems("Gelatin"))
+    game.StarterGui:SetCore("SendNotification", {Title = "Capacidade", Text = "Pode fazer: " .. p, Duration = 5})
+end)
+
+InfoSection:NewButton("Calcular Valor de Venda", "Soma lucro na mochila", function()
+    local grana, total = calcularVendaTotal()
+    game.StarterGui:SetCore("SendNotification", {Title = "Balanço", Text = "Total: $" .. grana .. " (" .. total .. " bags)", Duration = 7})
+end)
+
+local ConfigSection = Window:NewTab("Config"):NewSection("Ajustes UI")
+ConfigSection:NewKeybind("Esconder/Mostrar UI", "Shift Direito", Enum.KeyCode.RightShift, function()
+    Library:ToggleUI()
+end)
