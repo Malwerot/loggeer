@@ -111,7 +111,7 @@ AutoTab:CreateToggle({
 })
 
 ----------------------------------------------------------------
--- [ ABA THEMES - ONDE ESTAVA O ERRO ]
+-- [ ABA: THEMES ]
 ----------------------------------------------------------------
 Themes:CreateDropdown({
     Name = "Current Theme",
@@ -120,13 +120,11 @@ Themes:CreateDropdown({
     MultipleOptions = false,
     Flag = "CurrentTheme",
     Callback = function(Options)
-        -- O SEGREDO: Pegar o primeiro item da tabela [1]
-        local themeSelecionado = Options[1] 
-        
-        -- Agora sim, passa como STRING para o ModifyTheme
-        Window:ModifyTheme(themeSelecionado)
+        -- Aqui estava Window.ModifyTheme, o correto é com dois pontos (:)
+        Window:ModifyTheme(Options)
     end,
 })
+
 
 -- Keybind para fechar a UI
 ThemesTab:CreateKeybind({
