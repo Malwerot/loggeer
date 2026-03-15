@@ -98,7 +98,7 @@ local Window = Rayfield:CreateWindow({
 })
 
 local AutoTab = Window:CreateTab("AutoFarm", "badge-dollar-sign")
-local ThemesTab = Window:CreateTab("Themes", "palette")
+local Themes = Window:CreateTab("Themes", "palette")
 
 -- Toggle do Farm
 AutoTab:CreateToggle({
@@ -122,15 +122,4 @@ Themes:CreateDropdown({
     Callback = function(Options)
         Window.ModifyTheme(Options[1])
     end,
-})
-
--- Keybind para fechar a UI
-ThemesTab:CreateKeybind({
-   Name = "Esconder Menu",
-   CurrentKeybind = "RightShift",
-   HoldToInteract = false,
-   Flag = "UIKeybind",
-   Callback = function()
-      Rayfield:ToggleUI()
-   end,
 })
