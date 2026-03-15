@@ -129,7 +129,7 @@ MainTab:CreateToggle({
    end,
 })
 
--- Seção de Temas (A Otimização que você pediu)
+-- Seção de Temas (Correção do ModifyTheme)
 ConfigTab:CreateSection("Personalização da UI")
 
 ConfigTab:CreateDropdown({
@@ -139,19 +139,21 @@ ConfigTab:CreateDropdown({
    MultipleOptions = false,
    Flag = "ThemeDropdown",
    Callback = function(Option)
-      -- A Rayfield usa o nome da opção diretamente para trocar o tema
-      Rayfield:SetTheme(Option[1])
+      -- Usando o método correto que você lembrou!
+      Window:ModifyTheme(Option[1])
    end,
 })
 
+-- Seção de Atalhos (Correção da Keybind)
 ConfigTab:CreateSection("Atalhos")
 
 ConfigTab:CreateKeybind({
-   Name = "Esconder Menu",
+   Name = "Esconder/Mostrar Menu",
    CurrentKeybind = "RightShift",
    HoldToInteract = false,
-   Flag = "Keybind1",
+   Flag = "UIKeybind",
    Callback = function(Keybind)
-      -- A Rayfield já trata o Toggle internamente com o Keybind padrão da Window
+      -- Método oficial da Rayfield para alternar visibilidade
+      Rayfield:ToggleUI()
    end,
 })
